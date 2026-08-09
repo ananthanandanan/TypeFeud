@@ -10,6 +10,9 @@ authors composing them.
 
 **Status:** pre-Milestone 1. Scaffold is up and green; no game exists yet.
 
+**Next action is `/ank:tasks`**, not code — the work has not been broken into
+issues yet. See [`docs/scaffold-handoff.md`](./docs/scaffold-handoff.md).
+
 The full design and technical spec is [`SPEC.md`](./SPEC.md). It is the source of
 truth — this README is the operator's manual.
 

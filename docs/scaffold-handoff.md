@@ -7,6 +7,48 @@ monorepo. No game logic implemented.
 **Date:** 2026-08-09
 **Working dir:** `/Users/ananthan2k/Gitrepos/TypeFeud`
 
+---
+
+## ▶ START HERE — run `/ank:tasks` before picking up any coding work
+
+**If you have been asked what to work on, or asked to start building: the answer is
+`/ank:tasks`, not code.** Nothing is broken and nothing is half-finished — the work
+simply has not been broken into tasks yet, and the ank pipeline sequences it:
+
+```
+/ank:third-degree → /ank:spec → /ank:tasks → (build) → /ank:review-board
+      done            done       ← YOU ARE HERE
+```
+
+Say so and run it. Do not start Milestone 1, do not open `engine.ts`, and do not
+propose an implementation plan until issues exist. The user decided this on
+2026-08-09 and deferred it to the next session deliberately.
+
+All of `/ank:tasks`'s preconditions are already satisfied — verified, not assumed:
+
+- `SPEC.md` is at repo root, approved (the user wrote it themselves)
+- `git remote -v` → `git@github.com:ananthanandanan/TypeFeud.git`
+- `gh auth status` → authenticated as `ananthanandanan`
+- the repo has **no existing issues**, so `T-01` should map cleanly to `#1`
+
+Two notes for whoever runs it:
+
+- **Do not offer to re-run `/ank:spec`.** The spec was hand-written and is already
+  in ank-spec shape; re-specing it would be pure reformatting. This was decided
+  explicitly.
+- **Its Stage 6 empty-directory scaffold is a no-op here** — the real scaffold
+  already exists. `mkdir -p` over it is harmless; do not let it create files.
+
+The natural track split from SPEC §4.1 is `packages/game` / `packages/protocol` /
+`packages/content` / `apps/web` / `apps/server`, and the natural phase boundaries
+are the Milestones in SPEC §8. Let the skill propose them at its Stage 1 rather
+than pre-empting it.
+
+Once issues exist, the first coding task is **Next steps §2** at the bottom of this
+document.
+
+---
+
 ## Agenda
 
 Set up README + this handoff + project scaffolding so the next session can start
