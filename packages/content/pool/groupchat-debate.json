@@ -1,0 +1,74 @@
+[
+  {
+    "id": "groupchat-trigger-jab-001",
+    "arena": "group_chat",
+    "round": "trigger",
+    "tier": "jab",
+    "text": "WHAT",
+    "wordCount": 1,
+    "tags": ["texting"],
+    "tone": "stunned"
+  },
+  {
+    "id": "groupchat-debate-jab-001",
+    "arena": "group_chat",
+    "round": "debate",
+    "tier": "jab",
+    "text": "You left me on read.",
+    "wordCount": 5,
+    "tags": ["texting"],
+    "tone": "flat"
+  },
+  {
+    "id": "groupchat-debate-jab-002",
+    "arena": "group_chat",
+    "round": "debate",
+    "tier": "jab",
+    "text": "Four hours. I counted them.",
+    "wordCount": 5,
+    "tags": ["texting", "passive_aggression"],
+    "tone": "clipped"
+  },
+  {
+    "id": "groupchat-debate-combo-001",
+    "arena": "group_chat",
+    "round": "debate",
+    "tier": "combo",
+    "text": "You were online the entire time and I have the receipts.",
+    "wordCount": 11,
+    "tags": ["texting", "evidence"],
+    "responseTo": ["dismissal"],
+    "tone": "prosecutorial"
+  },
+  {
+    "id": "groupchat-debate-combo-002",
+    "arena": "group_chat",
+    "round": "debate",
+    "tier": "combo",
+    "text": "A thumbs up is not a response, it is a verdict.",
+    "wordCount": 11,
+    "tags": ["texting", "reactions"],
+    "tone": "wounded"
+  },
+  {
+    "id": "groupchat-debate-haymaker-001",
+    "arena": "group_chat",
+    "round": "debate",
+    "tier": "haymaker",
+    "text": "There is no universe in which four hours of silence followed by a single consonant is not a declaration of war.",
+    "wordCount": 21,
+    "tags": ["texting", "passive_aggression"],
+    "responseTo": ["dismissal"],
+    "tone": "exasperated"
+  },
+  {
+    "id": "groupchat-debate-haymaker-002",
+    "arena": "group_chat",
+    "round": "debate",
+    "tier": "haymaker",
+    "text": "You had time to react to a reel, rate a restaurant, and change your profile picture, but not to type three words.",
+    "wordCount": 22,
+    "tags": ["texting", "evidence"],
+    "tone": "incredulous"
+  }
+]

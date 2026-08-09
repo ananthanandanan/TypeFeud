@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.next/
+out/
+.turbo/
+coverage/
+
+.env
+.env.local
+.env*.local
+
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Cloudflare (Milestone 4)
+.open-next/
+.wrangler/
+
+# Content drafts are pre-human-review; only content/pool is the source of truth
+packages/content/drafts/*.json
