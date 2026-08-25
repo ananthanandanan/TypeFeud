@@ -8,10 +8,12 @@ authors composing them.
 > TypeRacer *measures* you. TypeFeud *casts* you — as the person in the argument,
 > winning or losing it in public, in front of an audience.
 
-**Status:** pre-Milestone 1. Scaffold is up and green; no game exists yet.
+**Status:** pre-Milestone 1. Scaffold is up and green; no game exists yet, but
+the work is planned and the visual design is settled.
 
-**Next action is `/ank:tasks`**, not code — the work has not been broken into
-issues yet. See [`docs/scaffold-handoff.md`](./docs/scaffold-handoff.md).
+**Next action is [issue #2](https://github.com/ananthanandanan/TypeFeud/issues/2)** —
+the typing surface. See [`TASKS.md`](./TASKS.md) for the 14-issue board and
+[`docs/design/README.md`](./docs/design/README.md) for the design system.
 
 The full design and technical spec is [`SPEC.md`](./SPEC.md). It is the source of
 truth — this README is the operator's manual.

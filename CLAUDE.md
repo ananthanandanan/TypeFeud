@@ -2,13 +2,34 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Before writing code: run `/ank:tasks`
+## Start here: issue #2
 
-The repo is a green scaffold with no game logic. Work has not been broken into
-issues yet, and the user deliberately deferred that step (see
-`docs/scaffold-handoff.md`). If asked what to work on or to start building, the
-answer is `/ank:tasks` — not `engine.ts`, not an implementation plan. Do not
-offer to re-run `/ank:spec`; `SPEC.md` was hand-written and is already approved.
+Planning is finished. `SPEC.md` is approved, `TASKS.md` holds 14 tasks, and GitHub
+issues **#1–#14** exist mapping T-01…T-14 one-to-one. Do not run `/ank:spec` or
+`/ank:tasks` again — both are done.
+
+**The next coding task is [#2 — typing surface with live correctness tracking](https://github.com/ananthanandanan/TypeFeud/issues/2).**
+It is Milestone 1's whole exit criterion in one PR:
+
+1. `applyKeystroke` in `packages/game/src/engine.ts` — a wrong character marks and
+   advances, never blocks; backspace repairs and costs time only (SPEC §2.4).
+   Fill in against the `LineProgress` shape already in `src/types.ts`.
+2. The typing surface in `apps/web/src/app/page.tsx` per SPEC §6.2 and the design
+   system below — monospace ≥24px, per-character states, smoothly moving caret,
+   wrong characters underlined and never replaced, zero layout shift.
+3. `?bot=1` and `?round=3` shortcuts plus the tuning panel (SPEC §7.2).
+
+Done when you can type a hardcoded line in the browser and it feels good. That is
+the bar — this milestone is 90% of the game, and if typing does not feel good here
+no amount of animation will save it.
+
+Issues are cut **vertically**: one issue = one PR = one demoable thing. Engine work
+and the UI that renders it ship together. Do not split a task into an engine PR and
+a UI PR.
+
+Two things outstanding, neither blocking: the GitHub Project board was never created
+(the token needs `gh auth refresh -s project,read:project`), and the design pass has
+no issue yet — it would land as #15.
 
 ## Commands
 

@@ -9,43 +9,30 @@ monorepo. No game logic implemented.
 
 ---
 
-## ▶ START HERE — run `/ank:tasks` before picking up any coding work
+## ✅ COMPLETED — this handoff is history, not instructions
 
-**If you have been asked what to work on, or asked to start building: the answer is
-`/ank:tasks`, not code.** Nothing is broken and nothing is half-finished — the work
-simply has not been broken into tasks yet, and the ank pipeline sequences it:
+**Everything below is a record of the 2026-08-09 scaffold session. Do not act on
+it.** Its original "START HERE" block told the next session to run `/ank:tasks`
+before any coding. That happened on 2026-08-25:
+
+- `/ank:tasks` ran — `TASKS.md` at repo root, GitHub issues #1–#14 created,
+  T-01…T-14 mapping one-to-one with no offset
+- the visual design followed — see `docs/design/README.md`
+- the board was recut vertically (one issue = one PR = one demoable thing), which
+  is why there are 14 issues rather than 25 and no A/B/C/D track structure
 
 ```
 /ank:third-degree → /ank:spec → /ank:tasks → (build) → /ank:review-board
-      done            done       ← YOU ARE HERE
+      done          skipped        done       ← YOU ARE HERE
 ```
 
-Say so and run it. Do not start Milestone 1, do not open `engine.ts`, and do not
-propose an implementation plan until issues exist. The user decided this on
-2026-08-09 and deferred it to the next session deliberately.
+**For what to do next, read `CLAUDE.md`.** Short version: start at issue #2, the
+typing surface. Do not re-run `/ank:spec` or `/ank:tasks`.
 
-All of `/ank:tasks`'s preconditions are already satisfied — verified, not assumed:
-
-- `SPEC.md` is at repo root, approved (the user wrote it themselves)
-- `git remote -v` → `git@github.com:ananthanandanan/TypeFeud.git`
-- `gh auth status` → authenticated as `ananthanandanan`
-- the repo has **no existing issues**, so `T-01` should map cleanly to `#1`
-
-Two notes for whoever runs it:
-
-- **Do not offer to re-run `/ank:spec`.** The spec was hand-written and is already
-  in ank-spec shape; re-specing it would be pure reformatting. This was decided
-  explicitly.
-- **Its Stage 6 empty-directory scaffold is a no-op here** — the real scaffold
-  already exists. `mkdir -p` over it is harmless; do not let it create files.
-
-The natural track split from SPEC §4.1 is `packages/game` / `packages/protocol` /
-`packages/content` / `apps/web` / `apps/server`, and the natural phase boundaries
-are the Milestones in SPEC §8. Let the skill propose them at its Stage 1 rather
-than pre-empting it.
-
-Once issues exist, the first coding task is **Next steps §2** at the bottom of this
-document.
+What is still accurate below: the "Fixes made during scaffold" and "Key decisions"
+sections explain why the tsconfigs are `noEmit`, why `engine.ts` exports stubs that
+throw, and why content ids are unabbreviated. The "Next steps" list at the bottom is
+superseded by `TASKS.md`.
 
 ---
 
@@ -138,7 +125,7 @@ Not done: no game logic, no typing surface, no rooms, no queue, no content beyon
   job body.
 - No ESLint/Prettier config outside `apps/web` (which has `eslint-config-next`).
 
-## Next steps
+## Next steps _(superseded — see `TASKS.md` and `CLAUDE.md`)_
 
 1. Run `/ank:tasks`. It reads `SPEC.md`, hard-stops for approval at Stage 3, then
    again at Stage 4 before touching GitHub, then creates issues + a project board +
