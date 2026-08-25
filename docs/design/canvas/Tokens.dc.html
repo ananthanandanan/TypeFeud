@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #56B4E9; } a:hover { color: #8ECBF0; }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 940px; background: #0B0D10; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: #E8EDF2; padding: 40px; display: flex; flex-direction: column; gap: 30px; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-size: 12px; letter-spacing: 0.3em; color: #5A6672;">TYPEFEUD</div>
+    <div style="font-size: 26px; font-weight: 800; letter-spacing: 0.06em;">DESIGN SYSTEM</div>
+  </div>
+
+  <!-- palette -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <div style="font-size: 12px; letter-spacing: 0.24em; color: #5A6672;">PALETTE · OKABE–ITO</div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #56B4E9;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#56B4E9</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">You. Figure fill, HP bar, locked-in card.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #E69F00;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#E69F00</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Opponent. Never used for your own state.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #D55E00;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#D55E00</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Error. Always paired with a 3px underline.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #F0E442;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#F0E442</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Momentum, special, caret, damage burst.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #0B0D10; border: 2px solid #232A32; box-sizing: border-box;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#0B0D10</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Ground.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #14181D;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#14181D</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Panel.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #E8EDF2;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#E8EDF2</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Typed-correct text.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="height: 62px; background: #5A6672;"></div>
+        <div style="padding-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em;">#5A6672</div>
+        <div style="font-size: 11px; color: #5A6672; line-height: 1.5;">Pending text, labels.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- type -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <div style="font-size: 12px; letter-spacing: 0.24em; color: #5A6672;">TYPE · JETBRAINS MONO, ONE FAMILY</div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span style="width: 190px; flex-shrink: 0; font-size: 11px; color: #5A6672;">58 / 800 · DAMAGE</span>
+        <span style="font-size: 58px; font-weight: 800; line-height: 1;">40</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span style="width: 190px; flex-shrink: 0; font-size: 11px; color: #5A6672;">28 / 500 · TYPED LINE</span>
+        <span style="font-size: 28px; font-weight: 500;">you left me on read</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span style="width: 190px; flex-shrink: 0; font-size: 11px; color: #5A6672;">20 / 800 · PLAYER NAME</span>
+        <span style="font-size: 20px; font-weight: 800; letter-spacing: 0.14em;">MAYA</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span style="width: 190px; flex-shrink: 0; font-size: 11px; color: #5A6672;">15 / 400 · OPTION COPY</span>
+        <span style="font-size: 15px;">i watched you post three times</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span style="width: 190px; flex-shrink: 0; font-size: 11px; color: #5A6672;">11 / 400 · LABEL, 0.24em</span>
+        <span style="font-size: 11px; letter-spacing: 0.24em; color: #5A6672;">BIGGEST HIT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- rules -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px;">
+    <div style="border: 2px solid #232A32; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #F0E442;">NOTHING SIGNALS BY HUE ALONE</div>
+      <div style="font-size: 12px; line-height: 1.7; color: #E8EDF2;">Blue and orange are the Okabe–Ito pair, distinguishable under every form of colourblindness. On top of that, <strong>you are always on the left</strong> and errors always carry an underline — so position and shape carry the meaning even with colour removed entirely.</div>
+    </div>
+    <div style="border: 2px solid #232A32; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #F0E442;">EFFECTS NEVER TOUCH THE TEXT</div>
+      <div style="font-size: 12px; line-height: 1.7; color: #E8EDF2;">Screen shake, sabotage jitter and impact bursts render <strong>behind the typing surface or outside its bounding box</strong>. The panel is opaque and sits above the stage for exactly this reason. When in doubt, reduce the effect.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 30px; font-size: 11px; color: #5A6672; letter-spacing: 0.1em;">
+    <span>NO BORDER RADIUS</span>
+    <span>2PX BORDERS</span>
+    <span>GLOW = BOX-SHADOW AT 0.4 ALPHA</span>
+    <span>SPACING 6 / 14 / 18 / 26 / 40</span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

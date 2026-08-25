@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #56B4E9; } a:hover { color: #8ECBF0; }
+  </style>
+</helmet>
+
+<div style="width: 1400px; height: 820px; background: #0B0D10; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: #E8EDF2; padding: 40px; display: flex; flex-direction: column; gap: 26px; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-size: 12px; letter-spacing: 0.3em; color: #5A6672;">SPEC §6.4 · REQUIRED STATES</div>
+    <div style="font-size: 26px; font-weight: 800; letter-spacing: 0.06em;">FIGURE VOCABULARY</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="60" cy="22" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M60 37 L60 80"/><path d="M60 50 L44 68"/><path d="M60 50 L76 68"/><path d="M60 80 L46 118"/><path d="M60 80 L74 118"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">IDLE</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Between lines. Small vertical bob.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="66" cy="24" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M65 39 L58 80"/><path d="M62 52 L82 62"/><path d="M62 55 L80 70"/><path d="M58 80 L46 118"/><path d="M58 80 L70 116"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">TYPING</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Locked in, leaning into the line.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="52" cy="24" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M54 39 L58 80"/><path d="M55 52 L32 42"/><path d="M56 55 L74 60"/><path d="M58 80 L38 114"/><path d="M58 80 L78 112"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">WINDUP</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Fist cocked. Fires near line completion.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="68" cy="26" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M67 41 L54 78"/><path d="M64 52 L108 47"/><path d="M64 55 L44 67"/><path d="M54 78 L30 112"/><path d="M54 78 L80 118"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">STRIKE</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">On completion. Damage burst fires here.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="44" cy="30" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M47 44 L62 80"/><path d="M50 54 L32 38"/><path d="M52 56 L72 40"/><path d="M62 80 L50 118"/><path d="M62 80 L82 112"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">HIT-TAKEN</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Head snaps back. Never shakes the text.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="46" cy="30" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M49 45 L64 80"/><path d="M52 55 L34 68"/><path d="M53 57 L74 50"/><path d="M64 80 L42 116"/><path d="M64 80 L88 108"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">STAGGER</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Uncorrected error. Self-damage, off balance.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="60" cy="24" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M60 39 L60 80"/><path d="M60 50 L32 24"/><path d="M60 50 L88 24"/><path d="M60 80 L40 118"/><path d="M60 80 L80 118"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">SPECIAL</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Four clean lines. 1.8x on the next one.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="60" cy="22" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M60 37 L60 80"/><path d="M60 50 L84 22"/><path d="M60 50 L42 62"/><path d="M60 80 L48 118"/><path d="M60 80 L74 116"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">VICTORY</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">Round or match won.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="width: 100%; height: 170px; background: #14181D; border: 2px solid #232A32; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <svg width="128" height="150" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+            <circle cx="42" cy="66" r="15" fill="#56B4E9"/>
+            <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round"><path d="M46 78 L76 96"/><path d="M52 84 L34 102"/><path d="M56 86 L48 108"/><path d="M76 96 L96 112"/><path d="M76 96 L72 118"/></g>
+          </svg>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">DEFEAT</div>
+        <div style="font-size: 11px; line-height: 1.5; color: #5A6672; text-align: center;">KO or timer loss.</div>
+      </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <div style="font-size: 12px; letter-spacing: 0.24em; color: #5A6672;">IMPACT SCALES WITH TIER · FIRES ON LINE COMPLETION, NEVER PER KEYSTROKE</div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; align-items: end;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="height: 130px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
+            <svg width="64" height="64" viewBox="0 0 140 140" style="position: absolute;" aria-hidden="true"><polygon points="132,70 99,78 124,101 91,91 101,124 78,99 70,132 62,99 39,124 49,91 16,101 41,78 8,70 41,62 16,39 49,49 39,16 62,41 70,8 78,41 101,16 91,49 124,39 99,62" fill="#F0E442"/></svg>
+            <span style="position: relative; font-size: 19px; font-weight: 800; color: #0B0D10;">6</span>
+          </div>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">JAB</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="height: 130px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center;">
+            <svg width="96" height="96" viewBox="0 0 140 140" style="position: absolute;" aria-hidden="true"><polygon points="132,70 99,78 124,101 91,91 101,124 78,99 70,132 62,99 39,124 49,91 16,101 41,78 8,70 41,62 16,39 49,49 39,16 62,41 70,8 78,41 101,16 91,49 124,39 99,62" fill="#F0E442"/></svg>
+            <span style="position: relative; font-size: 28px; font-weight: 800; color: #0B0D10;">13</span>
+          </div>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">COMBO</div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="height: 130px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: relative; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center;">
+            <svg width="130" height="130" viewBox="0 0 140 140" style="position: absolute;" aria-hidden="true"><polygon points="132,70 99,78 124,101 91,91 101,124 78,99 70,132 62,99 39,124 49,91 16,101 41,78 8,70 41,62 16,39 49,49 39,16 62,41 70,8 78,41 101,16 91,49 124,39 99,62" fill="#F0E442"/></svg>
+            <span style="position: relative; font-size: 39px; font-weight: 800; color: #0B0D10;">30</span>
+          </div>
+        </div>
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #E8EDF2;">HAYMAKER</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 34px;">
+        <div style="font-size: 12px; font-weight: 800; letter-spacing: 0.16em; color: #F0E442;">LETTERED HITS</div>
+        <div style="font-size: 11px; line-height: 1.6; color: #5A6672;">Haymakers and specials add one hand-set word beside the burst — OOF, YIKES, BRUTAL. Jabs never do; if every hit shouts, none of them land.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

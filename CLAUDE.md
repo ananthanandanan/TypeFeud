@@ -36,6 +36,15 @@ moves too — say so rather than silently diverging. `README.md` is the operator
 manual; `docs/scaffold-handoff.md` records what the scaffold session decided and
 why.
 
+## Design
+
+The visual system is settled and lives on a canvas at
+<https://claude.ai/code/artifact/5c1997e1-3227-48cd-9f5b-643510e5db82> — fight
+screen, results, typing surface, impact beat, physics, tokens, figure states, and
+match flow. Source is `docs/design/canvas/`; `docs/design/README.md` has the
+palette, type ramp, and the two non-negotiable rules. Read it before building any
+UI, and do not re-derive colours from a mockup.
+
 ## Architecture
 
 Five workspaces, layered so client and server can never disagree:

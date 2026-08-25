@@ -1,0 +1,87 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Fight screen"
+    },
+    {
+      "file": "Results.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Results"
+    },
+    {
+      "file": "TypingSurface.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 1200,
+      "h": 660,
+      "title": "Typing surface"
+    },
+    {
+      "file": "Impact.dc.html",
+      "x": 4440,
+      "y": 0,
+      "w": 1500,
+      "h": 800,
+      "title": "Impact beat"
+    },
+    {
+      "file": "Physics.dc.html",
+      "x": 6060,
+      "y": 0,
+      "w": 1500,
+      "h": 1120,
+      "title": "Physics"
+    },
+    {
+      "file": "Tokens.dc.html",
+      "x": 0,
+      "y": 1060,
+      "w": 1200,
+      "h": 940,
+      "title": "Design system"
+    },
+    {
+      "file": "Figures.dc.html",
+      "x": 1320,
+      "y": 1060,
+      "w": 1400,
+      "h": 820,
+      "title": "Figure vocabulary"
+    },
+    {
+      "file": "Flow.dc.html",
+      "x": 2840,
+      "y": 1060,
+      "w": 1400,
+      "h": 780,
+      "title": "Match flow"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "screens-row",
+      "x": 0,
+      "y": -130,
+      "w": 520,
+      "text": "SCREENS \u2014 the three that Milestone 2 and 3 actually build. Laid out left to right in the order a player meets them."
+    },
+    {
+      "id": "system-row",
+      "x": 0,
+      "y": 930,
+      "w": 520,
+      "text": "SYSTEM \u2014 tokens, figure states and the match graph. These feed the code, not a screen."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

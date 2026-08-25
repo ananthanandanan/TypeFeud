@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #56B4E9; } a:hover { color: #8ECBF0; }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 660px; background: #0B0D10; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: #E8EDF2; padding: 40px; display: flex; flex-direction: column; gap: 28px; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-size: 12px; letter-spacing: 0.3em; color: #5A6672;">SPEC §6.2</div>
+    <div style="font-size: 26px; font-weight: 800; letter-spacing: 0.06em;">THE TYPING SURFACE</div>
+  </div>
+
+  <div style="background: #14181D; border: 2px solid #2B333C; padding: 34px 36px;">
+    <div style="font-size: 32px; font-weight: 500; line-height: 1.7; letter-spacing: 0.01em;">
+      <span style="color: #E8EDF2;">you had time to react to a </span><span style="color: #D55E00; border-bottom: 3px solid #D55E00;">rell</span><span style="color: #E8EDF2;">, time to </span><span style="border-left: 3px solid #F0E442; padding-left: 1px;"></span><span style="color: #5A6672;">send a poll about brunch</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px;">
+    <div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #E8EDF2; padding-top: 12px;">
+      <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; color: #E8EDF2;">CORRECT</div>
+      <div style="font-size: 12px; line-height: 1.6; color: #5A6672;">#E8EDF2 · weight 500. Full contrast, no decoration.</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #F0E442; padding-top: 12px;">
+      <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; color: #F0E442;">CURRENT</div>
+      <div style="font-size: 12px; line-height: 1.6; color: #5A6672;">A 3px caret that moves smoothly between characters. Never a background block.</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #D55E00; padding-top: 12px;">
+      <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; color: #D55E00;">WRONG</div>
+      <div style="font-size: 12px; line-height: 1.6; color: #5A6672;">Colour <em>and</em> a 3px underline, so it never signals by hue alone. The character you typed stays visible — never replaced.</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #5A6672; padding-top: 12px;">
+      <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; color: #5A6672;">PENDING</div>
+      <div style="font-size: 12px; line-height: 1.6; color: #5A6672;">Dimmed but fully laid out. Space is reserved before typing starts.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 14px; align-items: flex-start; border: 2px solid #232A32; padding: 18px 20px;">
+    <div style="width: 4px; align-self: stretch; background: #F0E442; flex-shrink: 0;"></div>
+    <div style="font-size: 13px; line-height: 1.7; color: #E8EDF2;">
+      <strong style="font-weight: 800;">Zero layout shift, ever.</strong> The full line renders at final metrics before the first keystroke — only colour and the caret change as you type. Monospace at 28px makes every character advance identical, so a wrong character can never reflow the line beneath it.
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

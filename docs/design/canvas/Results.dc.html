@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #56B4E9; } a:hover { color: #8ECBF0; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #0B0D10; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; color: #E8EDF2; display: flex; flex-direction: column; align-items: center; gap: 26px; padding: 34px 40px; box-sizing: border-box;">
+
+  <div style="display: flex; align-items: center; gap: 20px;">
+    <svg width="64" height="74" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+      <circle cx="60" cy="22" r="15" fill="#56B4E9"/>
+      <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round">
+        <path d="M60 37 L60 80"/>
+        <path d="M60 50 L84 22"/>
+        <path d="M60 50 L42 62"/>
+        <path d="M60 80 L48 118"/>
+        <path d="M60 80 L74 116"/>
+      </g>
+    </svg>
+    <div style="font-size: 54px; font-weight: 800; letter-spacing: 0.18em; color: #56B4E9; line-height: 1;">YOU WON</div>
+  </div>
+
+  <!-- clip, leading -->
+  <div style="width: 100%; max-width: 1000px; background: #14181D; border: 2px solid #2B333C; display: flex; flex-direction: column;">
+    <div style="height: 400px; position: relative; display: flex; align-items: center; justify-content: center; background-image: linear-gradient(#12161B 1px, transparent 1px), linear-gradient(90deg, #12161B 1px, transparent 1px); background-size: 40px 40px;">
+
+      <div style="position: absolute; left: 90px; top: 50%; transform: translateY(-40%);">
+        <svg width="120" height="140" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+          <circle cx="68" cy="26" r="15" fill="#56B4E9"/>
+          <g stroke="#56B4E9" stroke-width="13" stroke-linecap="round">
+            <path d="M67 41 L54 78"/><path d="M64 52 L108 47"/><path d="M64 55 L44 67"/>
+            <path d="M54 78 L30 112"/><path d="M54 78 L80 118"/>
+          </g>
+        </svg>
+      </div>
+
+      <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+        <svg width="170" height="170" viewBox="0 0 140 140" style="position: absolute;" aria-hidden="true">
+          <polygon points="132,70 99,78 124,101 91,91 101,124 78,99 70,132 62,99 39,124 49,91 16,101 41,78 8,70 41,62 16,39 49,49 39,16 62,41 70,8 78,41 101,16 91,49 124,39 99,62" fill="#F0E442"/>
+        </svg>
+        <span style="position: relative; font-size: 46px; font-weight: 800; color: #0B0D10;">40</span>
+      </div>
+
+      <div style="position: absolute; right: 90px; top: 50%; transform: translateY(-40%) scaleX(-1);">
+        <svg width="120" height="140" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+          <circle cx="44" cy="30" r="15" fill="#E69F00"/>
+          <g stroke="#E69F00" stroke-width="13" stroke-linecap="round">
+            <path d="M47 44 L62 80"/><path d="M50 54 L32 38"/><path d="M52 56 L72 40"/>
+            <path d="M62 80 L50 118"/><path d="M62 80 L82 112"/>
+          </g>
+        </svg>
+      </div>
+
+      <div style="position: absolute; top: 18px; left: 22px; font-size: 11px; letter-spacing: 0.24em; color: #5A6672;">MATCH CLIP · ROUND 3</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px 22px; border-top: 2px solid #232A32;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8EDF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="#E8EDF2"/></svg>
+      <div style="flex-grow: 1; height: 4px; background: #232A32; display: flex;">
+        <div style="width: 62%; background: #56B4E9;"></div>
+      </div>
+      <span style="font-size: 12px; color: #5A6672;">0:06 / 0:09</span>
+      <div style="display: flex; gap: 8px;">
+        <div style="border: 2px solid #2B333C; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #E8EDF2;">GIF</div>
+        <div style="border: 2px solid #2B333C; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #E8EDF2;">MP4</div>
+        <div style="border: 2px solid #2B333C; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #E8EDF2;">COPY LINK</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats -->
+  <div style="width: 100%; max-width: 1000px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;">
+    <div style="border-top: 3px solid #56B4E9; padding-top: 14px; display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 11px; letter-spacing: 0.24em; color: #5A6672;">WPM</div>
+      <div style="font-size: 40px; font-weight: 800; line-height: 1;">83</div>
+    </div>
+    <div style="border-top: 3px solid #56B4E9; padding-top: 14px; display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 11px; letter-spacing: 0.24em; color: #5A6672;">ACCURACY</div>
+      <div style="font-size: 40px; font-weight: 800; line-height: 1;">96%</div>
+    </div>
+    <div style="border-top: 3px solid #F0E442; padding-top: 14px; display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 11px; letter-spacing: 0.24em; color: #5A6672;">BIGGEST HIT</div>
+      <div style="font-size: 40px; font-weight: 800; line-height: 1; color: #F0E442;">40</div>
+    </div>
+  </div>
+
+  <!-- the obvious next action -->
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+    <div style="background: #56B4E9; color: #0B0D10; font-size: 26px; font-weight: 800; letter-spacing: 0.24em; padding: 22px 96px; box-shadow: 0 0 40px rgba(86,180,233,0.4);">REMATCH</div>
+    <div style="display: flex; gap: 26px;">
+      <span style="font-size: 12px; letter-spacing: 0.16em; color: #5A6672;">NEW OPPONENT</span>
+      <span style="font-size: 12px; letter-spacing: 0.16em; color: #5A6672;">BACK TO MENU</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
