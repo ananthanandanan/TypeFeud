@@ -1,2 +1,3 @@
-export * from "./schema.js";
-export * from "./validate.js";
+export * from "./schema";
+export * from "./validate";
+export * from "./pool";

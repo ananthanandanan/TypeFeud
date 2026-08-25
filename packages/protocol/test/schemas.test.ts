@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientMessageSchema, serverMessageSchema } from "../src/index.js";
+import { clientMessageSchema, serverMessageSchema } from "../src/index";
 
 describe("clientMessageSchema", () => {
   it("round-trips a progress snapshot", () => {

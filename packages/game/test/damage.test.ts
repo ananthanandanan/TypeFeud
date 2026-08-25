@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accuracyMult, computeDamage, speedMult, wpm } from "../src/damage.js";
+import { accuracyMult, computeDamage, speedMult, wpm } from "../src/damage";
 
 describe("accuracyMult", () => {
   it("is 1.0 on a clean line", () => {

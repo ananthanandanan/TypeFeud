@@ -36,6 +36,16 @@ export interface LineProgress {
   charIndex: number;
   /** indices of characters currently typed wrong and not yet repaired */
   wrongIndices: number[];
+  /**
+   * What the player actually pressed, one entry per typed character
+   * (length === charIndex). SPEC §6.2 requires a wrong character to stay
+   * visible as typed, never replaced by the expected one — so the surface
+   * needs the keys, not just where they went wrong.
+   *
+   * Local render state only. It never goes on the wire: progress snapshots
+   * stay {lineId, charIndex, errors} (SPEC §4.3).
+   */
+  typedChars: string[];
   /** ms since round start at first keystroke — null until locked in */
   startedAt: number | null;
 }
@@ -86,5 +96,12 @@ export interface MatchOutcome {
 export interface KeyEvent {
   /** ms since round start */
   t: number;
+  /** the character typed, or BACKSPACE ("\b") */
   key: string;
+  /**
+   * Whose keystroke this is. Omitted means slot 0 — a client only ever has its
+   * own keystrokes, and the opponent arrives as progress snapshots, never keys
+   * (SPEC §4.3). The server sets it when folding a trace for either player.
+   */
+  slot?: PlayerSlot;
 }
