@@ -36,12 +36,13 @@ good here, no amount of animation will save it.
   - GitHub Actions running `pnpm test && pnpm typecheck && pnpm build` on push and PR.
   - Extend eslint + prettier beyond `apps/web` and wire `lint` into the turbo pipeline.
 
-- [ ] **[T-02 #2](https://github.com/ananthanandanan/TypeFeud/issues/2)** `feat: typing surface with live correctness tracking` `L`
+- [x] **[T-02 #2](https://github.com/ananthanandanan/TypeFeud/issues/2)** `feat: typing surface with live correctness tracking` `L`
   - **Engine:** `applyKeystroke` — a wrong character marks and advances, it never blocks; backspace repairs and costs time only. Never penalise both the error and the correction (SPEC §2.4).
   - **UI:** the typing surface per SPEC §6.2 — monospace ≥24px, per-character pending/correct/wrong/current, smoothly moving caret rather than a background block, wrong characters underlined and **never** replaced, zero layout shift.
   - **Dev:** `?bot=1` and `?round=3` shortcuts plus the tuning panel (SPEC §7.2) — they pay for themselves across every later milestone.
   - Done when you can type a hardcoded line in the browser and it feels good.
   - _Unblocks_ everything
+  - **Merged in [#15](https://github.com/ananthanandanan/TypeFeud/pull/15), 2026-08-26.** Exit criterion confirmed by hand. Two spec-touching changes landed with it: `LineProgress` gained `typedChars` (§6.2 needs the keys actually pressed, not just the error indices) and the damage math now takes an injected `Tuning` object so the panel can drive it. See `docs/milestone-1-handoff.md`.
 
 - [ ] **[T-03 #3](https://github.com/ananthanandanan/TypeFeud/issues/3)** `feat: damage and momentum on line completion` `M`
   - **Engine:** `resolveLine` composing the existing `computeDamage` with momentum charge/reset and special consumption — +1 per clean line, reset on any uncorrected error, special at 4 charges for 1.8× (SPEC §2.5, §2.6).

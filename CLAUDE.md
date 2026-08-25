@@ -2,26 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Start here: issue #2
+## Start here: issue #3
 
-Planning is finished. `SPEC.md` is approved, `TASKS.md` holds 14 tasks, and GitHub
-issues **#1–#14** exist mapping T-01…T-14 one-to-one. Do not run `/ank:spec` or
-`/ank:tasks` again — both are done.
+Planning is finished and **Milestone 1 is done**. `SPEC.md` is approved, `TASKS.md`
+holds 14 tasks, and GitHub issues **#1–#14** exist mapping T-01…T-14 one-to-one. Do
+not run `/ank:spec` or `/ank:tasks` again — both are done.
 
-**The next coding task is [#2 — typing surface with live correctness tracking](https://github.com/ananthanandanan/TypeFeud/issues/2).**
-It is Milestone 1's whole exit criterion in one PR:
+**#2 merged as [PR #15](https://github.com/ananthanandanan/TypeFeud/pull/15) on
+2026-08-26** — `applyKeystroke`, the SPEC §6.2 typing surface, and the dev
+shortcuts. Milestone 1's exit criterion is met: the line types well in the browser,
+confirmed by hand. See `docs/milestone-1-handoff.md` for what was decided and why.
 
-1. `applyKeystroke` in `packages/game/src/engine.ts` — a wrong character marks and
-   advances, never blocks; backspace repairs and costs time only (SPEC §2.4).
-   Fill in against the `LineProgress` shape already in `src/types.ts`.
-2. The typing surface in `apps/web/src/app/page.tsx` per SPEC §6.2 and the design
-   system below — monospace ≥24px, per-character states, smoothly moving caret,
-   wrong characters underlined and never replaced, zero layout shift.
-3. `?bot=1` and `?round=3` shortcuts plus the tuning panel (SPEC §7.2).
+**The next coding task is [#3 — damage and momentum on line completion](https://github.com/ananthanandanan/TypeFeud/issues/3).**
 
-Done when you can type a hardcoded line in the browser and it feels good. That is
-the bar — this milestone is 90% of the game, and if typing does not feel good here
-no amount of animation will save it.
+1. `resolveLine` in `packages/game/src/engine.ts` — compose the existing
+   `computeDamage` with momentum charge/reset and special consumption: +1 per clean
+   line, reset on any uncorrected error, special at 4 charges for 1.8×
+   (SPEC §2.5, §2.6). The live WPM and damage readout in the HUD already computes
+   the damage half; `resolveLine` is what makes it real and applies it to HP.
+2. The damage number and momentum meter in the UI, firing **on line completion, not
+   per keystroke** — per-keystroke feedback is noise at speed (SPEC §6.3).
+
+Done when finishing a line shows a number that responds to your accuracy and speed.
+
+**#1 (CI and repo-wide linting) is still open and unblocked** — `pnpm test &&
+pnpm typecheck && pnpm build` as a GitHub Actions job body. Worth doing early so the
+gate runs on PRs rather than on your machine.
 
 Issues are cut **vertically**: one issue = one PR = one demoable thing. Engine work
 and the UI that renders it ship together. Do not split a task into an engine PR and
@@ -29,7 +35,7 @@ a UI PR.
 
 Two things outstanding, neither blocking: the GitHub Project board was never created
 (the token needs `gh auth refresh -s project,read:project`), and the design pass has
-no issue yet — it would land as #15.
+no issue yet — it would land as #16 now that PR #15 took the number.
 
 ## Commands
 
@@ -82,9 +88,14 @@ Internal packages are consumed as **TypeScript source** (`"main": "./src/index.t
 all tsconfigs `noEmit`). There is no build step for them — do not add one; it
 exists to keep Milestone 1–3 iteration fast.
 
-`packages/game/src/engine.ts` holds four exported stubs that throw
-`not implemented`. That is intentional: the signatures were fixed first because
-both apps code against them. Filling them in is Milestone 1–2 work.
+`packages/game/src/engine.ts` exports `applyKeystroke` (implemented) plus three
+stubs that still throw `not implemented` — `resolveLine` (#3), `tickRound` and
+`resolveMatch` (both Milestone 2). That is intentional: the signatures were fixed
+first because both apps code against them.
+
+`packages/game/src/progress.ts` is the read side of that state — `lineCharStates`,
+`displayLine`, `uncorrectedErrors`, `createLineProgress`. The typing surface renders
+from these rather than reaching into `LineProgress` itself.
 
 ## Non-negotiable invariants
 
@@ -113,7 +124,17 @@ Breaking one of these is a design change, not a refactor. From SPEC §11:
 ## Conventions
 
 - Every tunable number lives in `packages/game/src/tuning.ts` — no magic numbers
-  in resolution code, so the dev tuning panel can drive them.
+  in resolution code, so the dev tuning panel can drive them. Functions that read a
+  tunable take a `Tuning` argument defaulting to `DEFAULT_TUNING`; they never reach
+  for the module constants directly, which is what lets the panel drive the live
+  math without making the package mutable.
+- **Imports inside the internal packages carry no file extension.** Turbopack will
+  not resolve `./damage.js` to `damage.ts` in a transpiled source package, and the
+  web build fails on the first import of `@typefeud/game` if you add one. tsc,
+  vitest and tsx all resolve extensionless.
+- Dev shortcuts (SPEC §7.2) live in `apps/web/src/dev/flags.ts`: `?bot=1`,
+  `?round=0..3`, `?tier=jab|combo|haymaker`, `?tuning=1`. Backtick toggles the
+  tuning panel, enter advances a line, esc restarts it.
 - Content line ids are `<arena-without-underscores>-<round>-<tier>-<nnn>`, e.g.
   `groupchat-debate-haymaker-001`. SPEC §3.3 sketches an abbreviated form; the
   validator standardises on the unabbreviated one.

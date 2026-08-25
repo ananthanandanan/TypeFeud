@@ -26,8 +26,12 @@ before any coding. That happened on 2026-08-25:
       done          skipped        done       ← YOU ARE HERE
 ```
 
-**For what to do next, read `CLAUDE.md`.** Short version: start at issue #2, the
-typing surface. Do not re-run `/ank:spec` or `/ank:tasks`.
+Milestone 1 has since been built too — issue #2 merged as PR #15 on 2026-08-26.
+See `docs/milestone-1-handoff.md`, which supersedes this document for anything
+about the game itself.
+
+**For what to do next, read `CLAUDE.md`.** Short version: start at issue #3, damage
+and momentum. Do not re-run `/ank:spec` or `/ank:tasks`.
 
 What is still accurate below: the "Fixes made during scaffold" and "Key decisions"
 sections explain why the tsconfigs are `noEmit`, why `engine.ts` exports stubs that

@@ -8,12 +8,15 @@ authors composing them.
 > TypeRacer *measures* you. TypeFeud *casts* you — as the person in the argument,
 > winning or losing it in public, in front of an audience.
 
-**Status:** pre-Milestone 1. Scaffold is up and green; no game exists yet, but
-the work is planned and the visual design is settled.
+**Status:** Milestone 1 done. You can type a line in the browser and it feels good —
+which was the milestone's whole exit criterion. Nothing resolves yet: finishing a
+line shows a readout, not damage.
 
-**Next action is [issue #2](https://github.com/ananthanandanan/TypeFeud/issues/2)** —
-the typing surface. See [`TASKS.md`](./TASKS.md) for the 14-issue board and
-[`docs/design/README.md`](./docs/design/README.md) for the design system.
+**Next action is [issue #3](https://github.com/ananthanandanan/TypeFeud/issues/3)** —
+damage and momentum on line completion. See [`TASKS.md`](./TASKS.md) for the
+14-issue board, [`docs/milestone-1-handoff.md`](./docs/milestone-1-handoff.md) for
+what the last session decided, and [`docs/design/README.md`](./docs/design/README.md)
+for the design system.
 
 The full design and technical spec is [`SPEC.md`](./SPEC.md). It is the source of
 truth — this README is the operator's manual.
@@ -84,17 +87,31 @@ Most of the test suite should live here.
 | `packages/game` — tuning constants (§2.5–2.8) | done |
 | `packages/game` — damage math + spec worked examples as tests | done |
 | `packages/game` — state types | done |
-| `packages/game` — `applyKeystroke` / `resolveLine` / `tickRound` / `resolveMatch` | **stubs that throw** — Milestone 1–2 |
+| `packages/game` — `applyKeystroke` + `progress.ts` derivations | done |
+| `packages/game` — `resolveLine` / `tickRound` / `resolveMatch` | **stubs that throw** — #3 and Milestone 2 |
 | `packages/protocol` — full wire schema (§4.4) + `Transport` interface (§4.6) | done |
 | `packages/content` — schema, mechanical validator, CI test over `pool/` | done |
 | `packages/content` — actual writing | 7 dev-fixture lines only; ~850 needed |
 | `apps/server` — `NodeWsTransport`, ping/pong | done |
 | `apps/server` — rooms, queue, matchmaking | Milestone 3–4 |
-| `apps/web` | placeholder page |
+| `apps/web` — typing surface (§6.2), live WPM/error readout | done |
+| `apps/web` — dev flags + tuning panel (§7.2) | done |
+| `apps/web` — three-line choice, HP bars, match flow | Milestone 2 |
 
-`pnpm test` is green (19 tests). The stubs in `packages/game/src/engine.ts` throw
-`not implemented` on purpose — the signatures are fixed first because both apps
-code against them.
+`pnpm test` is green (42 tests). The remaining stubs in `packages/game/src/engine.ts`
+throw `not implemented` on purpose — the signatures are fixed first because both
+apps code against them.
+
+### Dev shortcuts
+
+```
+?bot=1                        ghost opponent (inert until #7)
+?round=0..3                   0 trigger, 1 debate, 2 roast, 3 fight
+?tier=jab|combo|haymaker      which tier of line to serve
+?tuning=1                     open the tuning panel on load
+```
+
+Backtick toggles the tuning panel, enter advances a line, esc restarts it.
 
 ---
 
@@ -104,7 +121,7 @@ Do **not** build the game and then add multiplayer. From SPEC §8:
 
 | Milestone | Scope | Exit criterion |
 |---|---|---|
-| **1 — Feel** | single-player, one prompt, correctness, WPM, backspace cost, error damage. Ugly HTML. | typing feels good |
+| **1 — Feel** ✅ | single-player, one prompt, correctness, WPM, backspace cost, error damage. Ugly HTML. | typing feels good — **met 2026-08-26** |
 | **2 — The Arc** | three-line choice, momentum, scripted ghost opponent, all three rounds | the escalation lands; HP/damage/timers tuned |
 | **3 — Multiplayer** | stand up `apps/server`, swap ghost's trace source for a live socket | two browser tabs play a full match |
 | **4 — Matchmaking + Cloudflare** | queue, rooms, reconnect, ghost fallback — built directly as Durable Objects | — |
