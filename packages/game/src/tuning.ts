@@ -6,6 +6,8 @@
  * and so no magic numbers leak into the resolution code.
  */
 
+import type { Tier } from "./types";
+
 export const TIER_BASE_DAMAGE = {
   jab: 6,
   combo: 13,
@@ -57,3 +59,31 @@ export const SABOTAGE_COOLDOWN_MS = 8_000;
 
 /** Anti-cheat ceiling. SPEC §4.7. */
 export const MAX_PLAUSIBLE_WPM = 220;
+
+/**
+ * The tunable set as one object, so the dev tuning panel (SPEC §7.2) can drive
+ * the damage math without the resolution code reaching for module constants.
+ * Every function that reads a tunable takes one of these, defaulting to
+ * DEFAULT_TUNING — the constants above stay the single source of the values.
+ */
+export interface Tuning {
+  tierBaseDamage: Record<Tier, number>;
+  errorDamagePenalty: number;
+  accuracyMultFloor: number;
+  selfDamagePerError: number;
+  parWpm: number;
+  speedMultMin: number;
+  speedMultMax: number;
+  specialDamageMult: number;
+}
+
+export const DEFAULT_TUNING: Tuning = {
+  tierBaseDamage: { ...TIER_BASE_DAMAGE },
+  errorDamagePenalty: ERROR_DAMAGE_PENALTY,
+  accuracyMultFloor: ACCURACY_MULT_FLOOR,
+  selfDamagePerError: SELF_DAMAGE_PER_ERROR,
+  parWpm: PAR_WPM,
+  speedMultMin: SPEED_MULT_MIN,
+  speedMultMax: SPEED_MULT_MAX,
+  specialDamageMult: SPECIAL_DAMAGE_MULT,
+};

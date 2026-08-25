@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
+/**
+ * Tokens from docs/design/README.md. Do not re-derive colours from a mockup —
+ * add them here and reference the variable.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ground: #0b0d10;
+  --panel: #14181d;
+  --border: #2b333c;
+  --border-soft: #232a32;
+
+  --you: #56b4e9;
+  --opponent: #e69f00;
+  --error: #d55e00;
+  --momentum: #f0e442;
+
+  --text: #e8edf2;
+  --muted: #5a6672;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ground: var(--ground);
+  --color-panel: var(--panel);
+  --color-edge: var(--border);
+  --color-edge-soft: var(--border-soft);
+  --color-you: var(--you);
+  --color-opponent: var(--opponent);
+  --color-error: var(--error);
+  --color-momentum: var(--momentum);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* The design system has no border radius anywhere. */
+* {
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

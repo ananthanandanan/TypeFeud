@@ -85,6 +85,7 @@ The single most important interaction in the game. Both branches must stay viabl
 - Typing a wrong character does **not** block progress. The character is marked wrong, the player continues.
 - Each uncorrected error: **−15% outgoing damage** on that line (floor 40%) and **2 self-damage** (the figure stumbles).
 - Backspacing to repair costs only **time** — no damage penalty.
+- In-flight progress carries the **keys the player actually pressed**, not just the indices they got wrong. §6.2 requires a wrong character to stay on screen as typed, which is not recoverable from the line plus an error count. This is local render state and never goes on the wire — progress snapshots stay `{lineId, charIndex, errors}` (§4.3).
 
 The result: every typo is a live decision. *Am I far enough ahead to afford the repair?* This deliberately rhymes with the jab/haymaker decision — the game should feel like it asks one kind of question in several places.
 
@@ -102,6 +103,8 @@ speedMult    = clamp(lineWPM / 60, 0.7, 1.4)
 - **Clean haymaker at 80 WPM:** 30 × 1.0 × 1.33 = **~40 damage**
 - **Two-error haymaker at 80 WPM:** 30 × 0.7 × 1.33 = **~28 damage**, plus 4 self-damage
 - **Clean jab at 60 WPM:** 6 × 1.0 × 1.0 = **6 damage**
+
+Every function above takes its tunables as a `Tuning` argument defaulting to `DEFAULT_TUNING`, rather than reading module constants. The dev tuning panel (§7.2) drives the live math by passing its own object, so nothing in `packages/game` has to become mutable to support it.
 
 ### 2.6 Momentum meter
 

@@ -1,5 +1,5 @@
 import { WebSocketServer } from "ws";
-import { NodeWsTransport } from "./transport/node-ws.js";
+import { NodeWsTransport } from "./transport/node-ws";
 
 /**
  * Authoritative game server. SPEC §4.3, §4.6.
