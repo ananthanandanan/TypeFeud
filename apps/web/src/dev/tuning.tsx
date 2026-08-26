@@ -48,6 +48,8 @@ const FIELDS: { path: TuningPath; label: string; step: number }[] = [
   { path: "parWpm", label: "par wpm", step: 1 },
   { path: "speedMultMin", label: "speed mult min", step: 0.05 },
   { path: "speedMultMax", label: "speed mult max", step: 0.05 },
+  { path: "specialDamageMult", label: "special mult", step: 0.1 },
+  { path: "momentumChargesForSpecial", label: "charges / special", step: 1 },
 ];
 
 function read(tuning: Tuning, path: TuningPath): number {

@@ -1,11 +1,17 @@
 "use client";
 
 /**
- * Milestone 1's whole exit criterion: one line, typed, in the browser.
+ * One line, typed, resolved. SPEC §2.4, §2.5, §2.6.
  *
- * Everything here that looks like match flow is scaffolding for the real thing
- * — the three-line choice (T-04), damage resolution (T-03) and the round clock
- * (T-05) land later. What has to be right *now* is how a keystroke feels.
+ * Everything here that looks like match flow is still scaffolding — the
+ * three-line choice (T-04), the opponent (T-07) and the round clock (T-05) land
+ * later, and the opponent is a dummy that only ever takes damage. What is real
+ * is the loop: type a line, finish it, watch the number land on HP and the
+ * momentum meter charge or empty.
+ *
+ * RoundState lives here rather than in LineRun because HP, momentum and the
+ * Special have to survive the transition to the next line; only the per-line
+ * clock resets, which is what the remount key does.
  */
 
 import { linesForRound, POOL, type ContentLine } from "@typefeud/content";
@@ -14,16 +20,22 @@ import {
   BACKSPACE,
   computeDamage,
   createLineProgress,
+  resolveLine,
   ROUND_DURATION_MS,
+  specialReady,
+  triggerSpecial,
   uncorrectedErrors,
   wpm,
   type Line,
+  type LineOutcome,
   type PlayerState,
   type RoundState,
 } from "@typefeud/game";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DevFlags } from "@/dev/flags";
 import { TuningPanel, useTuning } from "@/dev/tuning";
+import { FighterBar } from "@/components/fighter-bar";
+import { ImpactBurst } from "@/components/impact-burst";
 import { TypingSurface } from "@/components/typing-surface";
 
 const toLine = (line: ContentLine): Line => ({
@@ -48,12 +60,13 @@ function candidates(flags: DevFlags): Line[] {
   return (pools.find((pool) => pool.length > 0) ?? []).map(toLine);
 }
 
-function player(slot: 0 | 1, options: [Line, Line, Line], lineId: string): PlayerState {
+function player(slot: 0 | 1, line: Line): PlayerState {
   return {
     slot,
     hp: 100,
-    options,
-    progress: createLineProgress(lineId),
+    // All three options are the same line until the choice lands in T-04.
+    options: [line, line, line],
+    progress: createLineProgress(line.id),
     momentum: 0,
     specialArmed: false,
     seenLineIds: [],
@@ -61,30 +74,52 @@ function player(slot: 0 | 1, options: [Line, Line, Line], lineId: string): Playe
 }
 
 function newRound(flags: DevFlags, line: Line): RoundState {
-  const options: [Line, Line, Line] = [line, line, line];
   return {
     round: flags.round,
     endsAt: ROUND_DURATION_MS[flags.round],
-    players: [player(0, options, line.id), player(1, options, line.id)],
+    players: [player(0, line), player(1, line)],
     rngCursor: 0,
+  };
+}
+
+/** Put a fresh line in front of the player, carrying HP, momentum and the Special. */
+function withLine(state: RoundState, line: Line): RoundState {
+  const [you, opponent] = state.players;
+  return {
+    ...state,
+    players: [
+      { ...you, options: [line, line, line], progress: createLineProgress(line.id) },
+      opponent,
+    ],
   };
 }
 
 export function TypingStage({ flags }: { flags: DevFlags }) {
   const lines = useMemo(() => candidates(flags), [flags]);
   const [run, setRun] = useState({ index: 0, attempt: 0 });
+  const [state, setState] = useState<RoundState>(() => newRound(flags, lines[0]!));
   const line = lines[run.index % lines.length]!;
 
-  const next = useCallback(() => setRun((r) => ({ index: r.index + 1, attempt: 0 })), []);
-  const restart = useCallback(() => setRun((r) => ({ ...r, attempt: r.attempt + 1 })), []);
+  const next = useCallback(() => {
+    const index = run.index + 1;
+    setRun({ index, attempt: 0 });
+    setState((current) => withLine(current, lines[index % lines.length]!));
+  }, [run.index, lines]);
 
-  // Remounting on the key is the reset: a fresh line is a fresh RoundState and
-  // a fresh clock, with no effect reaching in to clear the old one.
+  const restart = useCallback(() => {
+    setRun((r) => ({ ...r, attempt: r.attempt + 1 }));
+    setState((current) => withLine(current, line));
+  }, [line]);
+
+  // Remounting on the key is the clock reset: a fresh line is a fresh timer,
+  // with no effect reaching in to clear the old one. The round itself persists.
   return (
     <LineRun
       key={`${line.id}-${run.attempt}`}
       flags={flags}
       line={line}
+      state={state}
+      setState={setState}
       onNext={next}
       onRestart={restart}
     />
@@ -94,23 +129,31 @@ export function TypingStage({ flags }: { flags: DevFlags }) {
 function LineRun({
   flags,
   line,
+  state,
+  setState,
   onNext,
   onRestart,
 }: {
   flags: DevFlags;
   line: Line;
+  state: RoundState;
+  setState: React.Dispatch<React.SetStateAction<RoundState>>;
   onNext: () => void;
   onRestart: () => void;
 }) {
-  const [state, setState] = useState<RoundState>(() => newRound(flags, line));
   const [lastKeyAt, setLastKeyAt] = useState(0);
   const [now, setNow] = useState(0);
+  const [outcome, setOutcome] = useState<LineOutcome | null>(null);
   // Set on the first keystroke rather than at mount: it is only ever a base for
   // differences, and reading the clock during render is not allowed.
   const roundStart = useRef<number | null>(null);
+  // resolveLine leaves the finished line standing, so nothing in the state says
+  // "already resolved" — this is what keeps one line from being charged twice.
+  const resolved = useRef(false);
 
   const { tuning } = useTuning();
-  const progress = state.players[0].progress!;
+  const [you, opponent] = state.players;
+  const progress = you.progress!;
   const complete = progress.charIndex >= line.text.length;
 
   useEffect(() => {
@@ -122,6 +165,14 @@ function LineRun({
         ev.preventDefault();
         if (ev.key === "Enter") onNext();
         else onRestart();
+        return;
+      }
+
+      // Tab spends a full meter (SPEC §2.6 — the player triggers the Special).
+      // triggerSpecial is a no-op below four charges, so there is nothing to guard.
+      if (ev.key === "Tab") {
+        ev.preventDefault();
+        setState((current) => triggerSpecial(current, 0, tuning));
         return;
       }
 
@@ -137,7 +188,17 @@ function LineRun({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onNext, onRestart]);
+  }, [onNext, onRestart, setState, tuning]);
+
+  // Resolution fires once, on the keystroke that finishes the line — not per
+  // keystroke, which SPEC §6.3 rules out as noise at speed.
+  useEffect(() => {
+    if (!complete || resolved.current) return;
+    resolved.current = true;
+    const { state: after, outcome: landed } = resolveLine(state, { now: lastKeyAt }, tuning);
+    setState(after);
+    setOutcome(landed);
+  }, [complete, state, setState, lastKeyAt, tuning]);
 
   // The live WPM readout has to move between keystrokes too — 10Hz is the same
   // rate progress goes on the wire (SPEC §4.3), and is plenty for a number.
@@ -155,14 +216,33 @@ function LineRun({
   const started = progress.startedAt !== null;
   const errors = uncorrectedErrors(progress);
   const lineWpm = wpm(progress.charIndex, elapsed);
-  const { damage, selfDamage } = computeDamage(
-    { tier: line.tier, uncorrectedErrors: errors, lineWpm, special: false },
+  // In flight this is a preview of what the line is worth; once it lands, the
+  // resolved outcome replaces it so the readout and the burst never disagree.
+  const preview = computeDamage(
+    { tier: line.tier, uncorrectedErrors: errors, lineWpm, special: you.specialArmed },
     tuning,
   );
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-7 p-10">
       <TuningPanel />
+
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-10">
+        <FighterBar
+          name="YOU"
+          hp={you.hp}
+          momentum={you.momentum}
+          specialArmed={you.specialArmed}
+          side="you"
+        />
+        <FighterBar
+          name={flags.bot ? "GHOST" : "OPPONENT"}
+          hp={opponent.hp}
+          momentum={opponent.momentum}
+          specialArmed={opponent.specialArmed}
+          side="opponent"
+        />
+      </div>
 
       <header className="flex items-baseline justify-between">
         <span className="text-muted text-xs tracking-[0.3em] uppercase">
@@ -171,27 +251,37 @@ function LineRun({
         <span className="text-muted text-xs tracking-[0.24em] uppercase">{line.id}</span>
       </header>
 
+      {/* Outside the typing panel's bounding box, always — SPEC §6.5. */}
+      <ImpactBurst outcome={outcome} />
+
       <TypingSurface text={line.text} progress={progress} />
 
       <div className="grid grid-cols-4 gap-5">
         <Stat label="WPM" value={started ? Math.round(lineWpm) : "—"} tone="you" />
         <Stat label="Errors" value={errors} tone={errors > 0 ? "error" : "muted"} />
-        {/* A readout, not a resolution — resolveLine and HP land in T-03. */}
         <Stat
           label="Damage"
-          value={started ? damage.toFixed(1) : "—"}
-          tone={complete ? "momentum" : "muted"}
+          value={outcome ? outcome.damage : started ? preview.damage.toFixed(1) : "—"}
+          tone={outcome ? "momentum" : "muted"}
         />
-        <Stat label="Self" value={selfDamage} tone={selfDamage > 0 ? "error" : "muted"} />
+        <Stat
+          label="Self"
+          value={outcome ? outcome.selfDamage : preview.selfDamage}
+          tone={preview.selfDamage > 0 ? "error" : "muted"}
+        />
       </div>
 
       <footer className="text-muted flex items-baseline justify-between text-xs">
         <span>
-          {complete ? "line clear · enter for the next one" : "type it · backspace repairs"}
+          {complete
+            ? "line clear · enter for the next one"
+            : specialReady(you) && !you.specialArmed
+              ? "meter full · tab to arm the special"
+              : "type it · backspace repairs"}
         </span>
         <span className="tracking-[0.18em]">
           {flags.bot ? "BOT · pending T-07 · " : ""}
-          {"` TUNING · ENTER NEXT · ESC RESTART"}
+          {"` TUNING · TAB SPECIAL · ENTER NEXT · ESC RESTART"}
         </span>
       </footer>
     </main>
