@@ -49,7 +49,7 @@ good here, no amount of animation will save it.
   - **UI:** damage number and momentum meter, both firing **on line completion, not per keystroke** — per-keystroke feedback is noise at speed (SPEC §6.3).
   - Done when finishing a line shows a number that responds to your accuracy and speed.
   - **Depends on:** T-02 (#2)
-  - **Open as [#16](https://github.com/ananthanandanan/TypeFeud/pull/16), 2026-08-26.** Confirmed by hand: a clean haymaker at 89 WPM reads 42 and the opponent drops to 58, reproducing SPEC §2.5's worked example. Two things landed with it that touch the spec: `resolveLine`'s signature is now `(state, { now, slot? }, tuning?) => { state, outcome }` — it has to return new state, and WPM needs the completing keystroke's timestamp — and `momentumChargesForSpecial` joined `Tuning`. **SPEC §4.2 still shows the old signature.** See `docs/issue-3-handoff.md`.
+  - **Merged in [#16](https://github.com/ananthanandanan/TypeFeud/pull/16), 2026-08-26.** Confirmed by hand: a clean haymaker at 89 WPM reads 42 and the opponent drops to 58, reproducing SPEC §2.5's worked example. Two things landed with it that touch the spec: `resolveLine`'s signature is now `(state, { now, slot? }, tuning?) => { state, outcome }` — it has to return new state, and WPM needs the completing keystroke's timestamp — and `momentumChargesForSpecial` joined `Tuning`. SPEC §4.2 was brought in line by T-04 (#4). See `docs/issue-3-handoff.md`.
 
 ---
 
@@ -58,11 +58,12 @@ good here, no amount of animation will save it.
 **Exit criterion:** the debate→roast→fight escalation lands, and HP/damage/timers
 are tuned. All solo, no network.
 
-- [ ] **[T-04 #4](https://github.com/ananthanandanan/TypeFeud/issues/4)** `feat: three-line choice with first-keystroke lock-in` `M`
+- [x] **[T-04 #4](https://github.com/ananthanandanan/TypeFeud/issues/4)** `feat: three-line choice with first-keystroke lock-in` `M`
   - **Content:** pool loader with arena/round/tier queries over the committed JSON.
   - **UI:** three options visible at all times; the first keystroke matching a line's first character locks it in and dims the rest; all three refresh on completion (SPEC §2.3).
   - Watch the failure mode: if players always take the first line, the mechanic needs rework (SPEC §9).
   - **Depends on:** T-03 (#3)
+  - **Merged in [#17](https://github.com/ananthanandanan/TypeFeud/pull/17), 2026-08-26.** Confirmed by hand at `?round=1`. `lockIn` and `dealOptions` joined the engine and `dealThree` joined `packages/content`, dealing one line per tier most-constrained-tier-first so no two options share a first character. SPEC §2.3 gained the two rules it did not answer (the locking keystroke is the line's first character; options must not collide) and §4.2 gained both functions. `?tier=` now deals all three slots from one tier instead of filtering. The §9 failure mode is **still open** — no opponent pressure until T-07 (#7), six debate lines until T-11 (#11), damage untuned until T-12 (#12). Plan: `docs/plan/three-line-choice.html`; decisions: `docs/issue-4-handoff.md`.
 
 - [ ] **[T-05 #5](https://github.com/ananthanandanan/TypeFeud/issues/5)** `feat: full match flow — rounds, timers, HP, and outcome` `L`
   - **Engine:** `tickRound` and `resolveMatch`. Deadline-based against `endsAt`, no tick loop (SPEC §4.6). Rounds 1–2 hold their own 100 HP pools; winners carry +10 into Round 3, trigger winner +5; Round 3 ends on KO or timer (SPEC §2.7).

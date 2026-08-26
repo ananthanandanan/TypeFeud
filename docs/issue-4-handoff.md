@@ -3,7 +3,8 @@
 **Crux:** Three options now stand at all times, one per tier. The first keystroke
 matching a line's first character locks that line in, dims the other two, and
 counts as the line's first character. Enter deals three more. Milestone 2 is open.
-**Branch:** `feat/three-line-choice`, closing
+**Merged** as [PR #17](https://github.com/ananthanandanan/TypeFeud/pull/17)
+(`65a1faa`) on 2026-08-26, closing
 [issue #4](https://github.com/ananthanandanan/TypeFeud/issues/4)
 **Plan:** `docs/plan/three-line-choice.html` (approved before any code was written)
 **Date:** 2026-08-26
@@ -103,11 +104,24 @@ top of a new mechanic.
   and rules out E2E for v1; `apps/web` has no DOM test setup and this issue did not
   add one. The loop was verified end to end headlessly instead — deal, lock in,
   type at 90 WPM, resolve, deal again — which is what found the collision bug.
-- **Not hand-checked in a browser.** The Chrome extension was not connected in this
-  session, so the interactive check that #2 and #3 got did not happen here. The
-  server-rendered page was checked for the three cards and the pre-lock-in state,
-  and the mechanic itself is covered by the headless run and the engine tests. It
-  is still worth a minute at `localhost:3000/?round=1` before merge.
+**Hand-checked at `?round=1` before merge**, and worth knowing that this is what
+found the hydration bug — the headless SSR check could not, because the mismatch
+only exists once a browser reconciles the markup. The mechanic itself reads
+correctly: three cards, lock-in on the first matching character, the other two
+dimming, damage landing, enter dealing three more.
+
+## Two things the hand-check surfaced for #5
+
+**HP hits 0 and nothing happens.** Expected — `tickRound` and `resolveMatch` are
+still stubs, and nothing reads HP after `resolveLine` subtracts it. Worth knowing
+before #5 starts: SPEC §2.7 ends **only round 3** on KO. Rounds 1 and 2 hold their
+own 100 HP pools and are decided by who has more HP at the timer, so an opponent on
+0 in the debate round should *not* end anything. What should happen there instead —
+presumably clamp at 0 and run to the timer — §2.7 does not say. #5 has to decide it
+and write it into the spec.
+
+**Enter still deals.** #5's round clock will want to deal automatically once the
+impact beat finishes; the manual key was a deliberate one-issue simplification.
 
 ## The open question this issue could not answer
 

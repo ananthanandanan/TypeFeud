@@ -15,8 +15,10 @@ momentum, the Special). A clean haymaker at 89 WPM reads 42 and the opponent dro
 to 58, confirmed by hand. See `docs/milestone-1-handoff.md` and
 `docs/issue-3-handoff.md`.
 
-**#4 opened Milestone 2** — three options at all times, first-keystroke lock-in,
-`lockIn` and `dealOptions` in the engine, `dealThree` in `packages/content`. See
+**#4 merged as [PR #17](https://github.com/ananthanandanan/TypeFeud/pull/17) on
+2026-08-26**, opening Milestone 2 — three options at all times, first-keystroke
+lock-in, `lockIn` and `dealOptions` in the engine, `dealThree` in
+`packages/content`. Confirmed by hand at `?round=1`. See
 `docs/issue-4-handoff.md`, and `docs/plan/three-line-choice.html` for the plan it
 was built from.
 
@@ -26,8 +28,11 @@ loop** (SPEC §4.6); rounds 1–2 holding their own 100 HP pools, winners carryi
 into round 3; the split-screen layout with HP bars and round timers (SPEC §6.1).
 Done when a full trigger → debate → roast → fight match runs start to finish solo.
 
-It will want the enter key, which currently deals the next three lines — dealing
-should follow the impact beat once there is a round clock to hang it on.
+Two things #4 left for it. It will want the enter key, which currently deals the
+next three lines — dealing should follow the impact beat once there is a round
+clock to hang it on. And **HP reaching 0 currently does nothing**, which is correct
+for now: SPEC §2.7 ends only round 3 on KO, and what rounds 1–2 should do with a
+0-HP player is a decision #5 has to make and write into the spec.
 
 **#1 (CI and repo-wide linting) is still open and unblocked** — `pnpm test &&
 pnpm typecheck && pnpm build` as a GitHub Actions job body. Worth doing early so the
