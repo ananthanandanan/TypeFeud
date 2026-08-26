@@ -44,9 +44,25 @@ import { TypingSurface } from "@/components/typing-surface";
  * Selection is unseeded for now: `rng` is a parameter of `dealThree`, and T-06
  * (#6) replaces this argument with a seeded PRNG plus the cross-match ring
  * buffer of SPEC §3.6. Within a match, `seenLineIds` already prevents repeats.
+ *
+ * `rng` is also how the first render stays hydratable — see FIRST_DEAL below.
  */
-const deal = (flags: DevFlags, seen: readonly string[]): [Line, Line, Line] =>
-  dealThree({ round: flags.round, tier: flags.tier }, seen, Math.random);
+const deal = (
+  flags: DevFlags,
+  seen: readonly string[],
+  rng: () => number = Math.random,
+): [Line, Line, Line] => dealThree({ round: flags.round, tier: flags.tier }, seen, rng);
+
+/**
+ * The deal that renders on the server and again on the client's first pass.
+ *
+ * A random deal in the initial state would hand React two different sets of
+ * three lines to reconcile and blow up hydration. Dealing the same three both
+ * times and then re-dealing for real in an effect keeps the markup identical
+ * and costs one commit. #6 makes this unnecessary: with a seed on the state,
+ * both sides deal the same three and the effect goes.
+ */
+const FIRST_DEAL = () => 0;
 
 function player(slot: 0 | 1, options: [Line, Line, Line]): PlayerState {
   return {
@@ -61,21 +77,29 @@ function player(slot: 0 | 1, options: [Line, Line, Line]): PlayerState {
   };
 }
 
-function newRound(flags: DevFlags): RoundState {
+function newRound(flags: DevFlags, rng?: () => number): RoundState {
   return {
     round: flags.round,
     endsAt: ROUND_DURATION_MS[flags.round],
-    players: [player(0, deal(flags, [])), player(1, deal(flags, []))],
+    players: [player(0, deal(flags, [], rng)), player(1, deal(flags, [], rng))],
     rngCursor: 0,
   };
 }
 
 export function TypingStage({ flags }: { flags: DevFlags }) {
-  const [state, setState] = useState<RoundState>(() => newRound(flags));
+  const [state, setState] = useState<RoundState>(() => newRound(flags, FIRST_DEAL));
+  const dealtOnce = useRef(false);
   // Bumped by every deal, including a restart of the same three. It is the
   // remount key, and remounting is the per-line clock reset — no effect has to
   // reach in and clear the old one.
   const [generation, setGeneration] = useState(0);
+
+  // The real opening deal, once the markup the server sent has been adopted.
+  useEffect(() => {
+    if (dealtOnce.current) return;
+    dealtOnce.current = true;
+    setState(newRound(flags));
+  }, [flags]);
 
   const next = useCallback(() => {
     setState((current) =>

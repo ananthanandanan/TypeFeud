@@ -82,6 +82,14 @@ tiers on offer that is meaningless, so it now deals all three slots from one tie
 a dev override for testing a tier in isolation. It defaults to unset, which is why
 `DEFAULT_FLAGS.tier` is no longer `"haymaker"`.
 
+**The first deal is deterministic, then re-dealt on mount.** A random deal in
+`useState`'s initialiser runs on the server and again on the client, hands React
+two different sets of three lines, and blows up hydration — which is exactly what
+happened the first time the page was opened in a browser. `TypingStage` now deals
+with `rng = () => 0` for the render the server sends, and re-deals for real in a
+mount effect. #6 deletes this: with a seed on the state both sides deal the same
+three and the effect goes away.
+
 **Enter deals, rather than time dealing.** Today enter deals the next three. #5's
 round clock will want to deal automatically once the impact beat finishes; keeping
 it manual for one more issue meant no animation-timed state transition to debug on
