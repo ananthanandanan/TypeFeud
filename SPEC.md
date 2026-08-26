@@ -106,6 +106,11 @@ speedMult    = clamp(lineWPM / 60, 0.7, 1.4)
 
 Every function above takes its tunables as a `Tuning` argument defaulting to `DEFAULT_TUNING`, rather than reading module constants. The dev tuning panel (§7.2) drives the live math by passing its own object, so nothing in `packages/game` has to become mutable to support it.
 
+`computeDamage` returns an exact figure; `resolveLine` rounds it once, on the way
+into HP, so the damage burst, the readout and the HP bar cannot disagree about what
+a line was worth. The worked examples above are asserted against `computeDamage`
+directly, which is why the rounding does not live there.
+
 ### 2.6 Momentum meter
 
 - +1 charge per line completed with zero uncorrected errors
@@ -113,6 +118,11 @@ Every function above takes its tunables as a `Tuning` argument defaulting to `DE
 - At **4 charges**, a Special unlocks; the player triggers it and it consumes the meter
 
 Specials are round-flavoured: laminated chart (debate), triple-speed verse (roast), heavy swing (fight). Effect: **1.8× damage on the next completed line** plus a large visual payoff.
+
+A spent Special empties the meter *before* the line it fired on charges it, so
+firing on a clean line leaves the player at one charge rather than back at zero.
+The meter caps at `momentumChargesForSpecial` — a player who never triggers does
+not bank charges beyond the four the Special costs.
 
 Rewards precision explicitly, which is the counterweight to raw speed.
 
@@ -240,10 +250,24 @@ Pure functions. Zero I/O, zero DOM, zero network. Imported by **both** client an
 
 ```ts
 applyKeystroke(state: RoundState, ev: KeyEvent): RoundState
-resolveLine(state: RoundState, lineId: string): LineOutcome
+resolveLine(state: RoundState, at: ResolveInput, tuning?: Tuning): LineResolution
+triggerSpecial(state: RoundState, slot?: PlayerSlot, tuning?: Tuning): RoundState
 tickRound(state: RoundState, now: number): RoundState
 resolveMatch(rounds: RoundResult[]): MatchOutcome
 ```
+
+`resolveLine` returns `{ state, outcome }` rather than a bare `LineOutcome`, and
+takes `{ now, slot? }` rather than a line id. It has to return new state because
+resolution moves HP, momentum and the armed Special; and `now` — the timestamp of
+the keystroke that completed the line — has to be injected, because the line's WPM
+cannot be computed without it and this package may never read the clock itself.
+`triggerSpecial` is the player action §2.6 calls for: it arms a full meter, and the
+next completed line is the one multiplied.
+
+`resolveLine` leaves `progress` standing rather than clearing it, so the finished
+line stays on screen through the impact beat. The caller advances by locking in the
+next line, and **must resolve each completed line exactly once** — nothing in the
+state records that resolution already ran.
 
 **Why this matters:** it makes it structurally impossible for client and server to disagree about what a haymaker is worth. It eliminates the entire bug class where the loser's screen says they won. It also makes the game logic unit-testable with no browser and no socket — which is where the majority of your tests should live.
 
