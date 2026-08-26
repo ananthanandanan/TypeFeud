@@ -44,11 +44,12 @@ good here, no amount of animation will save it.
   - _Unblocks_ everything
   - **Merged in [#15](https://github.com/ananthanandanan/TypeFeud/pull/15), 2026-08-26.** Exit criterion confirmed by hand. Two spec-touching changes landed with it: `LineProgress` gained `typedChars` (§6.2 needs the keys actually pressed, not just the error indices) and the damage math now takes an injected `Tuning` object so the panel can drive it. See `docs/milestone-1-handoff.md`.
 
-- [ ] **[T-03 #3](https://github.com/ananthanandanan/TypeFeud/issues/3)** `feat: damage and momentum on line completion` `M`
+- [x] **[T-03 #3](https://github.com/ananthanandanan/TypeFeud/issues/3)** `feat: damage and momentum on line completion` `M`
   - **Engine:** `resolveLine` composing the existing `computeDamage` with momentum charge/reset and special consumption — +1 per clean line, reset on any uncorrected error, special at 4 charges for 1.8× (SPEC §2.5, §2.6).
   - **UI:** damage number and momentum meter, both firing **on line completion, not per keystroke** — per-keystroke feedback is noise at speed (SPEC §6.3).
   - Done when finishing a line shows a number that responds to your accuracy and speed.
   - **Depends on:** T-02 (#2)
+  - **Open as [#16](https://github.com/ananthanandanan/TypeFeud/pull/16), 2026-08-26.** Confirmed by hand: a clean haymaker at 89 WPM reads 42 and the opponent drops to 58, reproducing SPEC §2.5's worked example. Two things landed with it that touch the spec: `resolveLine`'s signature is now `(state, { now, slot? }, tuning?) => { state, outcome }` — it has to return new state, and WPM needs the completing keystroke's timestamp — and `momentumChargesForSpecial` joined `Tuning`. **SPEC §4.2 still shows the old signature.** See `docs/issue-3-handoff.md`.
 
 ---
 

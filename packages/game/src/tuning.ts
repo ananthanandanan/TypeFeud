@@ -75,6 +75,7 @@ export interface Tuning {
   speedMultMin: number;
   speedMultMax: number;
   specialDamageMult: number;
+  momentumChargesForSpecial: number;
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -86,4 +87,5 @@ export const DEFAULT_TUNING: Tuning = {
   speedMultMin: SPEED_MULT_MIN,
   speedMultMax: SPEED_MULT_MAX,
   specialDamageMult: SPECIAL_DAMAGE_MULT,
+  momentumChargesForSpecial: MOMENTUM_CHARGES_FOR_SPECIAL,
 };

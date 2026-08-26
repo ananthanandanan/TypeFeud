@@ -6,6 +6,8 @@
  * Pure and non-mutating like the rest of this package.
  */
 
+import { DEFAULT_TUNING } from "./tuning";
+import type { Tuning } from "./tuning";
 import type { CharState, Line, LineProgress, PlayerState } from "./types";
 
 /** One character of the typing surface: what to draw, and how. SPEC §6.2. */
@@ -29,6 +31,17 @@ export function activeLine(player: PlayerState): Line | null {
 /** Errors still standing at this instant. Repaired characters are not counted. */
 export function uncorrectedErrors(progress: LineProgress): number {
   return progress.wrongIndices.length;
+}
+
+/**
+ * Whether the momentum meter is full and a Special can be triggered. SPEC §2.6.
+ *
+ * Derived rather than stored: `momentum` is the one number that moves, and
+ * `specialArmed` records only that the player has actually spent the meter's
+ * readiness on a trigger.
+ */
+export function specialReady(player: PlayerState, tuning: Tuning = DEFAULT_TUNING): boolean {
+  return player.momentum >= tuning.momentumChargesForSpecial;
 }
 
 export function isLineComplete(text: string, progress: LineProgress): boolean {
