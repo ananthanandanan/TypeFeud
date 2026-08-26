@@ -1,9 +1,10 @@
 import { computeDamage, wpm } from "./damage";
-import { activeLine, isLineComplete, specialReady, uncorrectedErrors } from "./progress";
+import { activeLine, createLineProgress, isLineComplete, specialReady, uncorrectedErrors } from "./progress";
 import { DEFAULT_TUNING } from "./tuning";
 import type { Tuning } from "./tuning";
 import type {
   KeyEvent,
+  Line,
   LineOutcome,
   LineProgress,
   MatchOutcome,
@@ -35,16 +36,20 @@ export const BACKSPACE = "\b";
  * An error is therefore charged once, at resolution, and only if it is still
  * standing — never both the error and the correction.
  *
+ * With no line locked in, this is the keystroke that chooses one — it hands off
+ * to `lockIn` so that both apps have a single keystroke entry point and can
+ * never disagree about which line the player committed to (SPEC §2.3).
+ *
  * Ignored (returning the argument unchanged, so the caller can skip a render):
- * keystrokes before a line is locked in, non-character keys such as modifiers
- * and arrows, characters typed past the end of the line, and backspace at the
- * start of one.
+ * non-character keys such as modifiers and arrows, characters typed past the
+ * end of the line, backspace at the start of one, and backspace or a character
+ * matching no option while nothing is locked in.
  */
 export function applyKeystroke(state: RoundState, ev: KeyEvent): RoundState {
   const slot = ev.slot ?? 0;
   const player = state.players[slot];
   const progress = player.progress;
-  if (!progress) return state;
+  if (!progress) return lockIn(state, ev);
 
   const line = activeLine(player);
   if (!line) return state;
@@ -87,6 +92,57 @@ function applyBackspace(progress: LineProgress): LineProgress {
     // A backspace never starts the clock; charIndex > 0 means it already ran.
     startedAt: progress.startedAt,
   };
+}
+
+/**
+ * Choose a line by typing its first character. SPEC §2.3 — the mechanic that
+ * separates this from a speed test.
+ *
+ * The locking keystroke *is* the line's first character; the player never types
+ * it twice. Matching is case-insensitive because a missed shift must not leave
+ * the keyboard dead in the middle of a round, but the keystroke is then applied
+ * verbatim, so a case slip lands as an ordinary error the player can backspace
+ * over rather than as nothing at all (invariant 6).
+ *
+ * Ties break in the options' own order, which the dealer keeps as jab, combo,
+ * haymaker. `dealThree` prefers three distinct first characters precisely so
+ * that this is the floor rather than a coin flip the player cannot see coming.
+ *
+ * A no-op (returning the argument unchanged) when a line is already locked in
+ * or the key matches nothing, so the caller can route every key through
+ * `applyKeystroke` without guarding.
+ */
+export function lockIn(state: RoundState, ev: KeyEvent): RoundState {
+  const slot = ev.slot ?? 0;
+  const player = state.players[slot];
+  // BACKSPACE is a one-character key too, and nothing can be locked in with it.
+  if (player.progress || ev.key === BACKSPACE || ev.key.length !== 1) return state;
+
+  const chosen = player.options.find(
+    (option) => option.text[0]?.toLowerCase() === ev.key.toLowerCase(),
+  );
+  if (!chosen) return state;
+
+  return applyKeystroke(withProgress(state, slot, createLineProgress(chosen.id)), ev);
+}
+
+/**
+ * Put three fresh options in front of a player and clear whatever they were
+ * typing. SPEC §2.3 — all three refresh on completion.
+ *
+ * This is the other half of `resolveLine` leaving `progress` standing: the
+ * finished line stays on screen through the impact beat, and the deal is what
+ * ends it. Dealing does not resolve, so dealing over an unfinished line simply
+ * abandons it, undamaged either way.
+ */
+export function dealOptions(
+  state: RoundState,
+  slot: PlayerSlot,
+  options: [Line, Line, Line],
+): RoundState {
+  const players = [...state.players] as [PlayerState, PlayerState];
+  players[slot] = { ...players[slot], options, progress: null };
+  return { ...state, players };
 }
 
 function withProgress(state: RoundState, slot: PlayerSlot, progress: LineProgress): RoundState {

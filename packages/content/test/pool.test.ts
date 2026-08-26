@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { arenas, linesFor, POOL } from "../src/pool";
 import { validatePool } from "../src/validate";
 
 const POOL_DIR = join(import.meta.dirname, "..", "pool");
@@ -63,5 +64,28 @@ describe("validatePool", () => {
     };
     const issues = validatePool([line, { ...line, text: "Four hours. I counted them." }]);
     expect(issues.some((i) => i.problem === "duplicate id")).toBe(true);
+  });
+});
+
+describe("linesFor", () => {
+  it("returns the whole pool for an empty query", () => {
+    expect(linesFor()).toEqual(POOL);
+  });
+
+  it("narrows on round, tier and arena independently", () => {
+    expect(linesFor({ round: "debate" }).every((l) => l.round === "debate")).toBe(true);
+    expect(linesFor({ tier: "jab" }).every((l) => l.tier === "jab")).toBe(true);
+    expect(linesFor({ arena: "group_chat" }).length).toBeGreaterThan(0);
+  });
+
+  it("combines fields, and returns nothing when nothing matches", () => {
+    const combo = linesFor({ round: "debate", tier: "combo" });
+    expect(combo.length).toBeGreaterThan(0);
+    expect(combo.every((l) => l.round === "debate" && l.tier === "combo")).toBe(true);
+    expect(linesFor({ arena: "nowhere" })).toEqual([]);
+  });
+
+  it("lists the arenas the pool can stage", () => {
+    expect(arenas()).toContain("group_chat");
   });
 });

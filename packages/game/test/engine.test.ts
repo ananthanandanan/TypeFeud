@@ -147,9 +147,12 @@ describe("applyKeystroke — purity (SPEC §11)", () => {
     expect(applyKeystroke(state, { t: 1, key: "ArrowLeft" })).toBe(state);
   });
 
-  it("ignores keystrokes before a line is locked in", () => {
+  // Before #4 this was "ignores keystrokes before a line is locked in". SPEC
+  // §2.3 makes that keystroke the choice itself — see test/lock-in.test.ts.
+  it("locks a line in when there is none, and still ignores a key matching no option", () => {
     const state = round({ players: [player({ progress: null }), player({ slot: 1 })] });
-    expect(applyKeystroke(state, { t: 1, key: "y" })).toBe(state);
+    expect(applyKeystroke(state, { t: 1, key: "q" })).toBe(state);
+    expect(progressOf(applyKeystroke(state, { t: 1, key: "y" })).charIndex).toBe(1);
   });
 });
 
