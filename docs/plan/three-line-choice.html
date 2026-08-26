@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Three-line choice with first-keystroke lock-in — Implementation plan</title>
+        <style>
+            :root {
+                --bg: #f5f0e1;
+                --paper: #fbf8ec;
+                --paper-soft: #f1ead5;
+                --ink: #1a2e1f;
+                --ink-soft: #5a6b5a;
+                --accent: #b4541a;
+                --rule: #d8cfb4;
+                --dash: #b9b29a;
+                --tag-bg: #ece5d0;
+                --op-add: #2d5938;
+                --op-mod: #856104;
+                --op-del: #8a3320;
+            }
+            * { box-sizing: border-box; }
+            html, body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--ink);
+                font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+                font-size: 17px;
+                line-height: 1.55;
+            }
+            .page { max-width: 820px; margin: 0 auto; padding: 40px 24px 96px; }
+            .eyebrow {
+                font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-soft);
+            }
+            h1 { font-size: 40px; line-height: 1.15; margin: 6px 0 20px; font-weight: 600; letter-spacing: -0.01em; }
+            h2 { font-size: 26px; margin: 0; font-weight: 600; letter-spacing: -0.005em; }
+            h3 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+            p { margin: 8px 0; }
+            code { font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 0.92em; }
+
+            .prompt-box {
+                background: var(--paper-soft);
+                border: 1px solid var(--rule);
+                border-radius: 10px;
+                padding: 16px 18px;
+                margin: 20px 0 36px;
+            }
+            .prompt-box .plabel {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--accent);
+                margin-bottom: 6px;
+            }
+            .prompt-box p { margin: 0; font-size: 16px; }
+
+            .bubbles {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px; margin: 24px 0 56px;
+            }
+            .bubble { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; }
+            .bubble .label {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 10px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-soft);
+            }
+            .bubble .value {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 18px; font-weight: 500; margin-top: 4px;
+            }
+
+            section { margin: 56px 0; }
+            .section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+            .section-num {
+                font-family: ui-monospace, Menlo, monospace;
+                color: var(--ink-soft); font-size: 11px; letter-spacing: 0.08em;
+                background: var(--tag-bg); border-radius: 4px; padding: 2px 7px;
+            }
+            section > p:first-of-type { color: var(--ink-soft); margin: 4px 0 24px; }
+
+            .timeline { margin-top: 8px; }
+            .milestone { display: grid; grid-template-columns: 130px 28px 1fr; gap: 14px; padding-bottom: 28px; position: relative; }
+            .milestone .when {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; letter-spacing: 0.04em; color: var(--ink-soft);
+                padding-top: 4px; text-align: right;
+            }
+            .milestone .rail { position: relative; display: flex; justify-content: center; }
+            .milestone .rail::before {
+                content: ""; position: absolute; top: 0; bottom: -28px; left: 50%;
+                width: 1px; background: var(--rule); transform: translateX(-0.5px);
+            }
+            .milestone:last-child .rail::before { bottom: 0; }
+            .milestone .dot {
+                position: relative; z-index: 1; width: 11px; height: 11px; border-radius: 50%;
+                margin-top: 8px; background: var(--op-add); border: 2px solid var(--op-add);
+            }
+            .milestone.upcoming .dot { background: var(--bg); border: 2px solid var(--accent); }
+            .milestone .body { padding-top: 2px; }
+            .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+            .tag {
+                font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+                background: var(--tag-bg); border: 1px solid var(--rule);
+                padding: 2px 8px; border-radius: 4px;
+            }
+
+            .flow { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 22px; overflow-x: auto; }
+            .flow svg { width: 100%; height: auto; display: block; }
+            .legend { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-soft); margin-top: 12px; }
+
+            .mock { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; margin: 16px 0; }
+            .mock h3 { margin-bottom: 12px; }
+            .mock .caption { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-soft); margin-top: 12px; }
+
+            /* game-palette mock interior (SPEC §6, docs/design/README.md) */
+            .screen {
+                background: #0b0d10; border: 2px solid #2b333c; padding: 18px;
+                font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+                color: #e8edf2; overflow-x: auto;
+            }
+            .surface { background: #14181d; border: 2px solid #2b333c; padding: 16px 18px; margin-bottom: 14px; }
+            .surface .tierline { font-size: 9px; letter-spacing: 0.28em; color: #5a6672; margin-bottom: 10px; }
+            .surface .body { font-size: 15px; line-height: 1.6; }
+            .surface .idle { font-size: 15px; line-height: 1.6; color: #5a6672; }
+            .caret { border-left: 3px solid #f0e442; margin-left: 1px; }
+            .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+            .card { background: #14181d; border: 2px solid #232a32; padding: 10px 12px; }
+            .card .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+            .card .tier { font-size: 9px; font-weight: 800; letter-spacing: 0.2em; color: #5a6672; }
+            .card .dmg { font-size: 9px; color: #5a6672; }
+            .card .text { font-size: 11px; line-height: 1.5; color: #5a6672; }
+            .card.dim { opacity: 0.4; }
+            .card.locked { border-color: #56b4e9; }
+            .card.locked .tier, .card.locked .dmg { color: #56b4e9; }
+            .card.locked .text { color: #e8edf2; }
+
+            .files { display: grid; grid-template-columns: 1fr; gap: 0; }
+            .file-row {
+                display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: baseline;
+                border-bottom: 1px dashed var(--dash); padding: 10px 0;
+            }
+            .file-op { font-family: ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+            .op-add { color: var(--op-add); }
+            .op-mod { color: var(--op-mod); }
+            .op-del { color: var(--op-del); }
+            .file-path { font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+            .file-note { color: var(--ink-soft); font-size: 14px; margin-top: 3px; display: block; }
+
+            pre.code {
+                background: var(--paper); border: 1px solid var(--rule); border-radius: 8px;
+                padding: 14px 16px; overflow-x: auto;
+                font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.55;
+            }
+            .code-caption { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-soft); margin: 18px 0 6px; }
+
+            .future-item { border-top: 1px solid var(--rule); padding: 16px 0; }
+            .future-item:last-child { border-bottom: 1px solid var(--rule); }
+            .future-item .meta { font-family: ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.04em; color: var(--ink-soft); margin-top: 6px; }
+
+            .node { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; }
+            .node-new { fill: var(--paper); stroke: var(--accent); stroke-width: 2.5; }
+            .node-label { font-family: ui-monospace, Menlo, monospace; font-size: 12px; fill: var(--ink); }
+            .node-sub { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+            .stroke-solid { stroke: var(--ink); stroke-width: 2; fill: none; }
+            .stroke-dash { stroke: var(--ink); stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+            .edge-label { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+
+            @media (max-width: 640px) {
+                .milestone { grid-template-columns: 90px 22px 1fr; gap: 10px; }
+                h1 { font-size: 32px; }
+                h2 { font-size: 22px; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="eyebrow">Implementation plan · TypeFeud · issue #4 · milestone 2</div>
+            <h1>Three-line choice with first-keystroke lock-in</h1>
+
+            <div class="prompt-box">
+                <div class="plabel">Prompt</div>
+                <p>
+                    Next up is #4 — three-line choice with first-keystroke lock-in. Three options
+                    visible at all times, drawn from the pool loader in <code>packages/content</code>.
+                    The first keystroke matching a line's first character locks it in and dims the
+                    other two; all three refresh on completion (SPEC §2.3). Watch the failure mode
+                    SPEC §9 names: if players always take the first line, the mechanic needs rework.
+                </p>
+            </div>
+
+            <div class="bubbles">
+                <div class="bubble">
+                    <div class="label">Effort</div>
+                    <div class="value">~1 day · 1 PR</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Files added</div>
+                    <div class="value">4</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Files updated</div>
+                    <div class="value">6</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Packages touched</div>
+                    <div class="value">game · content · web</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">New engine exports</div>
+                    <div class="value">lockIn · dealOptions</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Blocked on</div>
+                    <div class="value">PR #16 merging</div>
+                </div>
+            </div>
+
+            <!-- 1. MILESTONES -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">01</span>
+                    <h2>Milestones</h2>
+                </div>
+                <p>
+                    One PR, cut vertically per CLAUDE.md — engine, content and the UI that renders
+                    them ship together. The three slices below are commit boundaries inside it, each
+                    one green on <code>pnpm test</code> before the next starts.
+                </p>
+
+                <div class="timeline">
+                    <div class="milestone">
+                        <div class="when">Slice 1 · ~2h</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Content read path and the dealer</h3>
+                            <p>
+                                <code>pool.ts</code> grows arena / round / tier queries over the
+                                committed JSON — the read side, not a second validator. A new
+                                <code>deal.ts</code> picks one line per tier, skipping ids the player
+                                has already seen this match and preferring three distinct first
+                                characters so lock-in is unambiguous. Randomness arrives as an
+                                <code>rng</code> parameter, so #6 swaps <code>Math.random</code> for a
+                                seeded PRNG without touching the call sites.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">packages/content/src/pool.ts</span>
+                                <span class="tag">packages/content/src/deal.ts</span>
+                                <span class="tag">packages/content/test</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Slice 2 · ~2h</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Engine: lock-in and the refresh</h3>
+                            <p>
+                                <code>lockIn</code> matches a keystroke against the three options'
+                                first characters and starts progress on the winner;
+                                <code>applyKeystroke</code> delegates to it when no line is locked in,
+                                so client and server share one rule and there is still exactly one
+                                keystroke entry point. <code>dealOptions</code> installs a fresh
+                                triple and clears progress — which is also what makes it safe to leave
+                                a resolved line standing. Tests for the match rule, the tie-break,
+                                and the no-match no-op.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">packages/game/src/engine.ts</span>
+                                <span class="tag">packages/game/test/lock-in.test.ts</span>
+                                <span class="tag">SPEC.md §2.3</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Slice 3 · ~3h</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>The choice on screen</h3>
+                            <p>
+                                A three-card row under the typing surface, built from the fight-screen
+                                artboard: tier, base damage, the line at 15px. Unselected cards drop to
+                                40% opacity on lock-in; the locked card takes the player-blue border and
+                                a LOCKED IN label. <code>typing-stage.tsx</code> loses its
+                                <code>[line, line, line]</code> scaffolding and its
+                                <code>candidates()</code> index walk, and deals a new triple after each
+                                resolution instead.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">apps/web/src/components/option-cards.tsx</span>
+                                <span class="tag">apps/web/src/components/typing-stage.tsx</span>
+                                <span class="tag">apps/web/src/dev/flags.ts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Exit</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Hand-check in the browser</h3>
+                            <p>
+                                Three options stand at all times; typing the first character of any one
+                                of them commits you to it and dims the rest; finishing it lands damage
+                                and deals three new lines. Confirmed by hand at <code>?round=1</code>,
+                                the way #2 and #3 were.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">pnpm dev</span>
+                                <span class="tag">docs/issue-4-handoff.md</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. DATA FLOW -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">02</span>
+                    <h2>Data flow</h2>
+                </div>
+                <p>
+                    One keystroke enters at the top left and either locks a line in or types into the
+                    one already locked. The bottom half is the refresh: resolution hands off to the
+                    dealer, which reads the pool and installs the next triple.
+                </p>
+
+                <div class="flow">
+                    <svg viewBox="0 0 720 440" xmlns="http://www.w3.org/2000/svg" aria-label="Keystroke, lock-in and refresh data flow">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#1a2e1f" />
+                            </marker>
+                        </defs>
+
+                        <!-- row 1 -->
+                        <rect class="node" x="20" y="20" width="170" height="60" />
+                        <text class="node-label" x="105" y="45" text-anchor="middle">keydown handler</text>
+                        <text class="node-sub" x="105" y="62" text-anchor="middle">apps/web · LineRun</text>
+
+                        <rect class="node" x="275" y="20" width="170" height="60" />
+                        <text class="node-label" x="360" y="45" text-anchor="middle">applyKeystroke</text>
+                        <text class="node-sub" x="360" y="62" text-anchor="middle">packages/game</text>
+
+                        <rect class="node" x="530" y="20" width="170" height="60" />
+                        <text class="node-label" x="615" y="45" text-anchor="middle">&lt;TypingSurface/&gt;</text>
+                        <text class="node-sub" x="615" y="62" text-anchor="middle">apps/web</text>
+
+                        <!-- row 2 -->
+                        <rect class="node-new" x="275" y="140" width="170" height="60" />
+                        <text class="node-label" x="360" y="165" text-anchor="middle">lockIn</text>
+                        <text class="node-sub" x="360" y="182" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="530" y="140" width="170" height="60" />
+                        <text class="node-label" x="615" y="165" text-anchor="middle">&lt;OptionCards/&gt;</text>
+                        <text class="node-sub" x="615" y="182" text-anchor="middle">apps/web</text>
+
+                        <!-- row 3 -->
+                        <rect class="node" x="275" y="260" width="170" height="60" />
+                        <text class="node-label" x="360" y="285" text-anchor="middle">resolveLine</text>
+                        <text class="node-sub" x="360" y="302" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="530" y="260" width="170" height="60" />
+                        <text class="node-label" x="615" y="285" text-anchor="middle">linesFor</text>
+                        <text class="node-sub" x="615" y="302" text-anchor="middle">packages/content</text>
+
+                        <!-- row 4 -->
+                        <rect class="node-new" x="275" y="370" width="170" height="60" />
+                        <text class="node-label" x="360" y="395" text-anchor="middle">dealOptions</text>
+                        <text class="node-sub" x="360" y="412" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="530" y="370" width="170" height="60" />
+                        <text class="node-label" x="615" y="395" text-anchor="middle">dealThree</text>
+                        <text class="node-sub" x="615" y="412" text-anchor="middle">packages/content</text>
+
+                        <!-- edges -->
+                        <path class="stroke-solid" d="M190 50 L275 50" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="232" y="42" text-anchor="middle">key</text>
+
+                        <path class="stroke-solid" d="M445 50 L530 50" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="487" y="42" text-anchor="middle">displayLine</text>
+
+                        <path class="stroke-solid" d="M360 80 L360 140" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="370" y="115" text-anchor="start">no line locked in</text>
+
+                        <path class="stroke-solid" d="M445 170 L530 170" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="487" y="162" text-anchor="middle">lock + dim</text>
+
+                        <path class="stroke-solid" d="M275 65 L240 65 L240 290 L275 290" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="232" y="180" text-anchor="end">line complete</text>
+
+                        <path class="stroke-solid" d="M445 290 L487 290 L487 400 L530 400" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="497" y="345" text-anchor="start">outcome</text>
+
+                        <path class="stroke-solid" d="M615 320 L615 370" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="625" y="348" text-anchor="start">round · seen ids</text>
+
+                        <path class="stroke-solid" d="M530 400 L445 400" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="487" y="392" text-anchor="middle">three lines</text>
+
+                        <path class="stroke-solid" d="M275 385 L215 385 L215 170 L275 170" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="207" y="270" text-anchor="end">options, progress = null</text>
+                    </svg>
+                </div>
+                <div class="legend">
+                    Solid = synchronous call. Terracotta border = new module. Every box left of
+                    <code>&lt;OptionCards/&gt;</code> is pure — the round state goes in, a new round
+                    state comes out, and <code>apps/server</code> will call the same three functions
+                    at Milestone 3.
+                </div>
+            </section>
+
+            <!-- 3. MOCKUP -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">03</span>
+                    <h2>Mockup</h2>
+                </div>
+                <p>
+                    Straight from the fight-screen artboard on the canvas — a three-card row under the
+                    typing surface. Colours are not re-derived here; they are the tokens in
+                    <code>docs/design/README.md</code>.
+                </p>
+
+                <div class="mock">
+                    <h3>A · Before lock-in — three live options</h3>
+                    <div class="screen">
+                        <div class="surface">
+                            <div class="tierline">ROUND 1 · DEBATE · CHOOSE YOUR LINE</div>
+                            <div class="idle">start typing any of the three<span class="caret"></span></div>
+                        </div>
+                        <div class="cards">
+                            <div class="card">
+                                <div class="head"><span class="tier">JAB</span><span class="dmg">6 DMG</span></div>
+                                <div class="text">Four hours. I counted them.</div>
+                            </div>
+                            <div class="card">
+                                <div class="head"><span class="tier">COMBO</span><span class="dmg">13 DMG</span></div>
+                                <div class="text">A thumbs up is not a response, it is a verdict.</div>
+                            </div>
+                            <div class="card">
+                                <div class="head"><span class="tier">HAYMAKER</span><span class="dmg">30 DMG</span></div>
+                                <div class="text">You had time to react to a reel, rate a restaurant, and change…</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="caption">
+                        Three distinct first characters — F, A, Y — is a property the dealer enforces,
+                        not a coincidence. All three cards read at full opacity; nothing is committed.
+                    </div>
+                </div>
+
+                <div class="mock">
+                    <h3>B · After the first keystroke — locked in</h3>
+                    <div class="screen">
+                        <div class="surface">
+                            <div class="tierline">HAYMAKER · 24 WORDS</div>
+                            <div class="body">
+                                <span style="color:#e8edf2">Y</span><span class="caret"></span><span style="color:#5a6672">ou had time to react to a reel, rate a restaurant, and change your profile picture twice.</span>
+                            </div>
+                        </div>
+                        <div class="cards">
+                            <div class="card dim">
+                                <div class="head"><span class="tier">JAB</span><span class="dmg">6 DMG</span></div>
+                                <div class="text">Four hours. I counted them.</div>
+                            </div>
+                            <div class="card dim">
+                                <div class="head"><span class="tier">COMBO</span><span class="dmg">13 DMG</span></div>
+                                <div class="text">A thumbs up is not a response, it is a verdict.</div>
+                            </div>
+                            <div class="card locked">
+                                <div class="head"><span class="tier">HAYMAKER</span><span class="dmg">LOCKED IN</span></div>
+                                <div class="text">You had time to react to a reel, rate a restaurant, and change…</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="caption">
+                        The <code>Y</code> that chose the line is also the first character typed — the
+                        player never types it twice. Dimming is opacity, not a colour swap, so the two
+                        rejected lines stay readable and nothing signals by hue alone (SPEC §6.7).
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. FILES -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">04</span>
+                    <h2>Files</h2>
+                </div>
+                <p>Small in the packages, concentrated in <code>typing-stage.tsx</code>.</p>
+
+                <div class="files">
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">packages/content/src/deal.ts</span>
+                            <span class="file-note">
+                                <code>dealThree(round, seen, rng)</code> — one line per tier, unseen,
+                                distinct first characters where the pool allows. Pure: randomness is a
+                                parameter. Lives in content rather than game because game must not know
+                                the pool exists; #6 moves the PRNG into game and leaves this as the
+                                candidate query.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">packages/content/test/deal.test.ts</span>
+                            <span class="file-note">
+                                One of each tier; never a seen id; distinct first characters with a
+                                pool that permits it; a fixed <code>rng</code> gives a fixed deal.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">packages/game/test/lock-in.test.ts</span>
+                            <span class="file-note">
+                                The match rule, the locking keystroke counting as character zero, the
+                                no-match no-op, case-insensitive lock-in charging the case slip as a
+                                repairable error, and the tier-order tie-break.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/option-cards.tsx</span>
+                            <span class="file-note">
+                                The three-card row. Presentational — takes
+                                <code>options</code>, the locked <code>lineId</code> and the tuning's
+                                base damage, and renders. No keyboard handling here; that stays in
+                                <code>LineRun</code>'s single listener.
+                            </span>
+                        </span>
+                    </div>
+
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">packages/game/src/engine.ts</span>
+                            <span class="file-note">
+                                Adds <code>lockIn</code> and <code>dealOptions</code>;
+                                <code>applyKeystroke</code> delegates to <code>lockIn</code> instead of
+                                returning unchanged when <code>progress</code> is null. Its doc comment
+                                loses the "keystrokes before a line is locked in are ignored" line,
+                                which stops being true.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">packages/content/src/pool.ts</span>
+                            <span class="file-note">
+                                <code>linesFor({ arena?, round?, tier? })</code> replaces the single
+                                <code>linesForRound</code>. Same committed JSON, one query surface.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/typing-stage.tsx</span>
+                            <span class="file-note">
+                                The bulk of the change. <code>candidates()</code> and the
+                                <code>run.index</code> walk go; <code>player()</code> and
+                                <code>withLine()</code> deal a real triple; the resolution effect is
+                                followed by a deal; the remount key becomes the option triple's ids so
+                                the per-line clock still resets. Enter now means "deal three new lines".
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">apps/web/src/dev/flags.ts</span>
+                            <span class="file-note">
+                                <code>?tier=</code> stops filtering the served line and becomes a deal
+                                override — all three slots from one tier, for testing a tier in
+                                isolation. Documented in the header comment.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">packages/content/test/pool.test.ts</span>
+                            <span class="file-note">
+                                Keeps the validation gate (<code>pnpm --filter @typefeud/content
+                                validate</code> runs this file), gains the query cases.
+                            </span>
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">SPEC.md</span>
+                            <span class="file-note">
+                                §2.3 gains the two rules the spec does not currently answer: what
+                                happens when two options share a first character, and that the locking
+                                keystroke is the first character typed. §4.2's function list gains
+                                <code>lockIn</code> and <code>dealOptions</code> — and, while it is open,
+                                the <code>resolveLine</code> signature it still shows wrong.
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. KEY CODE -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">05</span>
+                    <h2>Key code</h2>
+                </div>
+                <p>Three places where the obvious implementation is the wrong one.</p>
+
+                <div class="code-caption">packages/game/src/engine.ts — the lock-in rule</div>
+                <pre class="code">/**
+ * Lock a line in. SPEC §2.3 — the first keystroke matching an option's first
+ * character chooses that line, and counts as its first character.
+ *
+ * Matching is case-insensitive: a missed shift must not leave the keyboard
+ * dead. The keystroke is then applied verbatim, so the case slip lands as an
+ * ordinary error the player can backspace over (invariant 6).
+ *
+ * Ties are broken in tier order (jab, combo, haymaker). The dealer avoids
+ * dealing a tie at all, so this is the floor, not the mechanic.
+ */
+export function lockIn(state: RoundState, ev: KeyEvent): RoundState {
+  const slot = ev.slot ?? 0;
+  const player = state.players[slot];
+  if (player.progress || ev.key.length !== 1) return state;
+
+  const chosen = player.options.find(
+    (option) => option.text[0]?.toLowerCase() === ev.key.toLowerCase(),
+  );
+  if (!chosen) return state;
+
+  const locked = withProgress(state, slot, createLineProgress(chosen.id));
+  return applyKeystroke(locked, ev);
+}</pre>
+
+                <div class="code-caption">packages/content/src/deal.ts — dealing three that cannot collide</div>
+                <pre class="code">/**
+ * One line per tier. Distinct first characters where the pool allows it, so
+ * the lock-in tie-break in `lockIn` stays theoretical rather than a coin flip
+ * the player cannot see coming.
+ *
+ * `rng` is a parameter, not Math.random: T-06 (#6) drops a seeded PRNG in here
+ * and this file does not change. The `seen` filter is the same shape as the
+ * eventual no-repeat ring buffer (SPEC §3.6), applied to one match for now.
+ */
+export function dealThree(
+  round: RoundName,
+  seen: readonly string[],
+  rng: () => number,
+): [Line, Line, Line] {
+  const taken = new Set&lt;string&gt;();
+
+  return TIERS.map((tier) => {
+    const pool = linesFor({ round, tier }).filter((l) => !seen.includes(l.id));
+    const fresh = pool.length ? pool : linesFor({ round, tier }); // pool exhausted
+    const distinct = fresh.filter((l) => !taken.has(first(l)));
+    const from = distinct.length ? distinct : fresh;
+
+    const line = from[Math.floor(rng() * from.length)]!;
+    taken.add(first(line));
+    return toLine(line);
+  }) as [Line, Line, Line];
+}</pre>
+
+                <div class="code-caption">apps/web/src/components/typing-stage.tsx — resolve once, then deal</div>
+                <pre class="code">// resolveLine deliberately leaves the finished line standing so the surface
+// does not blank during the impact beat — the `resolved` ref is what keeps it
+// from charging twice. The deal is the thing that actually clears progress,
+// and it is the player's beat to take, not a timer's: enter deals.
+useEffect(() =&gt; {
+  if (!complete || resolved.current) return;
+  resolved.current = true;
+  const { state: after, outcome: landed } = resolveLine(state, { now: lastKeyAt }, tuning);
+  setState(after);
+  setOutcome(landed);
+}, [complete, state, setState, lastKeyAt, tuning]);
+
+const deal = useCallback(() =&gt; {
+  setState((current) =&gt; {
+    const you = current.players[0];
+    return dealOptions(current, 0, dealThree(current.round, you.seenLineIds, Math.random));
+  });
+}, []);</pre>
+            </section>
+
+            <!-- 6. FUTURE SCOPE -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">06</span>
+                    <h2>Future scope</h2>
+                </div>
+                <p>
+                    Four assumptions I made rather than come back and ask, and three things that are
+                    deliberately somebody else's issue.
+                </p>
+
+                <div class="future-item">
+                    <h3>Assumption · two options can share a first character</h3>
+                    <p>
+                        SPEC §2.3 does not say what happens, and with the pool as it stands it happens
+                        often — three of the six debate lines start with "Y". The plan solves it twice:
+                        the dealer prefers three distinct first characters, and <code>lockIn</code>
+                        falls back to tier order when the pool cannot supply them. The alternative —
+                        letting the player disambiguate with a second keystroke — is a much bigger
+                        mechanic and would slow the fastest players down, which is exactly backwards.
+                    </p>
+                    <div class="meta">Decide with · the #12 tuning pass · revisit if the fallback ever fires in play</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Assumption · lock-in is case-insensitive, typing is not</h3>
+                    <p>
+                        Typing lowercase <code>w</code> at <code>WHAT</code> locks the line in and
+                        immediately marks one error, repairable with backspace. The strict alternative
+                        ignores the keystroke entirely, which reads as a broken keyboard at the exact
+                        moment the round clock is running. "Errors never block" (invariant 6) points
+                        the same way.
+                    </p>
+                    <div class="meta">Decide with · hand-check in slice 3 · cheap to flip</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Assumption · the player reads the line twice</h3>
+                    <p>
+                        The canvas puts the full line in the 15px card and again at 32px in the surface
+                        once locked. That is a double read under time pressure and it may cost more
+                        than the choice is worth. I am building the settled design rather than
+                        improvising against it; if it reads badly by hand, the fix is a canvas change
+                        (truncate the card to its first clause) and not a code change.
+                    </p>
+                    <div class="meta">Decide with · the design pass · would become issue #17</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Assumption · enter deals the next triple</h3>
+                    <p>
+                        Today enter advances a line; the same key now deals three. The alternative is
+                        dealing automatically once the impact beat finishes, which is what #5 will want
+                        when the round clock is real. Keeping it manual for one more issue means the
+                        dev shortcuts stay unchanged and there is no animation-timed state transition
+                        to debug on top of a new mechanic.
+                    </p>
+                    <div class="meta">Decide with · #5 · the round clock replaces it</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Deferred · seeded selection and the no-repeat ring buffer</h3>
+                    <p>
+                        <code>dealThree</code> takes an <code>rng</code> and the caller passes
+                        <code>Math.random</code>. No-repeat is enforced within a match through
+                        <code>seenLineIds</code>, which is already on <code>PlayerState</code>, but the
+                        cross-match localStorage ring buffer of SPEC §3.6 is #6's work, and so is
+                        seeding. The parameter is here so that lands as a one-line change.
+                    </p>
+                    <div class="meta">Decide with · nothing · issue #6 owns it</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Deferred · the pool is six debate lines deep</h3>
+                    <p>
+                        Two lines per tier means the second deal of a match is nearly forced and the
+                        third has nothing unseen to offer, which is why the dealer falls back to
+                        repeating rather than dealing an empty slot. It makes the mechanic hard to
+                        judge honestly by hand. #11 writes the arenas; until then a "does the choice
+                        work" verdict is provisional.
+                    </p>
+                    <div class="meta">Decide with · #11 · content, not code</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Open · does anyone ever pick anything but the safe line?</h3>
+                    <p>
+                        SPEC §9's named failure mode. This issue cannot answer it — the damage numbers
+                        that make a haymaker worth the risk are #12's to tune, and there is no opponent
+                        pressure until #7. What this issue owes the question is that the choice is
+                        legible in the first place: three cards, three damage numbers, one keystroke.
+                        The handoff doc records a first impression, nothing stronger.
+                    </p>
+                    <div class="meta">Decide with · #12 tuning pass · after the ghost lands in #7</div>
+                </div>
+            </section>
+        </div>
+    </body>
+</html>

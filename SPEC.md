@@ -74,6 +74,11 @@ During rounds 1–3, each player sees **three simultaneous options** at all time
 
 The player begins typing any of them; the first keystroke that matches a line's first character **locks in** that line. Non-selected lines dim. On completion, all three refresh.
 
+Two consequences that are easy to get wrong:
+
+- **The locking keystroke is the line's first character.** The player never types it twice. It is matched case-insensitively — a missed shift must not leave the keyboard dead mid-round — and then applied verbatim, so a case slip lands as an ordinary error that backspace repairs (§2.4), never as nothing at all.
+- **Two options must not start with the same character.** The dealer fills the most-constrained tier first and prefers three distinct first characters. When a pool is too thin to supply them, lock-in breaks the tie in options order — jab, then combo, then haymaker — which is a floor, not a mechanic the player should meet.
+
 This is the mechanic that separates the game from a speed test. It creates a continuous risk/reward decision under time pressure, and it lets a slower, smarter player beat a faster, greedier one.
 
 **Design rule:** if the three options ever collapse into an obvious correct answer, the mechanic is dead. Tuning must keep all three tiers viable in different situations.
@@ -250,6 +255,8 @@ Pure functions. Zero I/O, zero DOM, zero network. Imported by **both** client an
 
 ```ts
 applyKeystroke(state: RoundState, ev: KeyEvent): RoundState
+lockIn(state: RoundState, ev: KeyEvent): RoundState
+dealOptions(state: RoundState, slot: PlayerSlot, options: [Line, Line, Line]): RoundState
 resolveLine(state: RoundState, at: ResolveInput, tuning?: Tuning): LineResolution
 triggerSpecial(state: RoundState, slot?: PlayerSlot, tuning?: Tuning): RoundState
 tickRound(state: RoundState, now: number): RoundState
@@ -264,10 +271,16 @@ cannot be computed without it and this package may never read the clock itself.
 `triggerSpecial` is the player action §2.6 calls for: it arms a full meter, and the
 next completed line is the one multiplied.
 
+`lockIn` and `dealOptions` are the two halves of §2.3. `applyKeystroke` delegates to
+`lockIn` when the player has no line locked in, so both apps have exactly one
+keystroke entry point and can never disagree about which line was committed to.
+`dealOptions` installs three fresh options and clears `progress`; which three is not
+this package's business, because it may not know the content pool exists.
+
 `resolveLine` leaves `progress` standing rather than clearing it, so the finished
-line stays on screen through the impact beat. The caller advances by locking in the
-next line, and **must resolve each completed line exactly once** — nothing in the
-state records that resolution already ran.
+line stays on screen through the impact beat. `dealOptions` is what ends it, and the
+caller **must resolve each completed line exactly once** — nothing in the state
+records that resolution already ran.
 
 **Why this matters:** it makes it structurally impossible for client and server to disagree about what a haymaker is worth. It eliminates the entire bug class where the loser's screen says they won. It also makes the game logic unit-testable with no browser and no socket — which is where the majority of your tests should live.
 

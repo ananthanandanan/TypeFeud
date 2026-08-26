@@ -2,34 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Start here: issue #4
+## Start here: issue #5
 
 Planning is finished. `SPEC.md` is approved, `TASKS.md` holds 14 tasks, and GitHub
 issues **#1–#14** exist mapping T-01…T-14 one-to-one. Do not run `/ank:spec` or
 `/ank:tasks` again — both are done.
 
-**#2 merged as [PR #15](https://github.com/ananthanandanan/TypeFeud/pull/15) on
-2026-08-26** — `applyKeystroke`, the SPEC §6.2 typing surface, and the dev
-shortcuts. Milestone 1's exit criterion is met: the line types well in the browser,
-confirmed by hand. See `docs/milestone-1-handoff.md`.
+**Milestone 1 is done.** #2 merged as [PR #15](https://github.com/ananthanandanan/TypeFeud/pull/15)
+(`applyKeystroke` and the SPEC §6.2 typing surface) and #3 as
+[PR #16](https://github.com/ananthanandanan/TypeFeud/pull/16) (`resolveLine`,
+momentum, the Special). A clean haymaker at 89 WPM reads 42 and the opponent drops
+to 58, confirmed by hand. See `docs/milestone-1-handoff.md` and
+`docs/issue-3-handoff.md`.
 
-**#3 is open as [PR #16](https://github.com/ananthanandanan/TypeFeud/pull/16)** —
-`resolveLine`, momentum, the Special, and the damage number and momentum meter in
-the UI. Confirmed by hand: a clean haymaker at 89 WPM reads 42 and the opponent
-drops to 58. **Merge it before starting #4, which builds directly on `resolveLine`.**
-See `docs/issue-3-handoff.md` for what was decided and why.
+**#4 opened Milestone 2** — three options at all times, first-keystroke lock-in,
+`lockIn` and `dealOptions` in the engine, `dealThree` in `packages/content`. See
+`docs/issue-4-handoff.md`, and `docs/plan/three-line-choice.html` for the plan it
+was built from.
 
-**The next coding task is [#4 — three-line choice with first-keystroke
-lock-in](https://github.com/ananthanandanan/TypeFeud/issues/4)**, which opens
-Milestone 2.
+**The next coding task is [#5 — the full match flow](https://github.com/ananthanandanan/TypeFeud/issues/5)**:
+`tickRound` and `resolveMatch`, deadline-based against `endsAt` with **no tick
+loop** (SPEC §4.6); rounds 1–2 holding their own 100 HP pools, winners carrying +10
+into round 3; the split-screen layout with HP bars and round timers (SPEC §6.1).
+Done when a full trigger → debate → roast → fight match runs start to finish solo.
 
-1. Three options visible at all times, drawn from the pool loader in
-   `packages/content`.
-2. The first keystroke matching a line's first character locks it in and dims the
-   other two; all three refresh on completion (SPEC §2.3).
-
-Watch the failure mode SPEC §9 names: if players always take the first line, the
-mechanic needs rework.
+It will want the enter key, which currently deals the next three lines — dealing
+should follow the impact beat once there is a round clock to hang it on.
 
 **#1 (CI and repo-wide linting) is still open and unblocked** — `pnpm test &&
 pnpm typecheck && pnpm build` as a GitHub Actions job body. Worth doing early so the
@@ -41,7 +39,7 @@ a UI PR.
 
 Two things outstanding, neither blocking: the GitHub Project board was never created
 (the token needs `gh auth refresh -s project,read:project`), and the design pass has
-no issue yet — it would land as #17 now that PR #16 took the number.
+no issue yet — it would land as #18 now that #4 took #17.
 
 ## Commands
 
@@ -94,8 +92,8 @@ Internal packages are consumed as **TypeScript source** (`"main": "./src/index.t
 all tsconfigs `noEmit`). There is no build step for them — do not add one; it
 exists to keep Milestone 1–3 iteration fast.
 
-`packages/game/src/engine.ts` exports `applyKeystroke`, `resolveLine` and
-`triggerSpecial` (all implemented) plus two stubs that still throw
+`packages/game/src/engine.ts` exports `applyKeystroke`, `lockIn`, `dealOptions`,
+`resolveLine` and `triggerSpecial` (all implemented) plus two stubs that still throw
 `not implemented` — `tickRound` and `resolveMatch`, both #5. That is intentional:
 the signatures were fixed first because both apps code against them.
 
@@ -103,10 +101,15 @@ the signatures were fixed first because both apps code against them.
 survive contact and is now
 `resolveLine(state, { now, slot? }, tuning?) => { state, outcome }` — it has to
 return new state, and WPM needs the completing keystroke's timestamp, which
-invariant 1 forbids the package from reading itself. **SPEC §4.2 still shows the
-old signature.** It also leaves `progress` standing rather than clearing it, so the
-caller must resolve each completed line exactly once; resolving twice charges the
-damage twice.
+invariant 1 forbids the package from reading itself. It also leaves `progress`
+standing rather than clearing it, so the caller must resolve each completed line
+exactly once; resolving twice charges the damage twice. `dealOptions` is what
+clears it and puts the next three lines up.
+
+`applyKeystroke` delegates to `lockIn` when the player has no line locked in, so
+every key goes through one entry point (SPEC §2.3). Which three lines get dealt is
+`dealThree` in `packages/content` — game may not know the pool exists — and it
+takes its randomness as a parameter, ready for #6 to seed.
 
 `packages/game/src/progress.ts` is the read side of that state — `lineCharStates`,
 `displayLine`, `uncorrectedErrors`, `createLineProgress`. The typing surface renders
@@ -148,9 +151,10 @@ Breaking one of these is a design change, not a refactor. From SPEC §11:
   web build fails on the first import of `@typefeud/game` if you add one. tsc,
   vitest and tsx all resolve extensionless.
 - Dev shortcuts (SPEC §7.2) live in `apps/web/src/dev/flags.ts`: `?bot=1`,
-  `?round=0..3`, `?tier=jab|combo|haymaker`, `?tuning=1`. Backtick toggles the
-  tuning panel, tab arms the Special when the meter is full, enter advances a line,
-  esc restarts it.
+  `?round=0..3`, `?tier=jab|combo|haymaker` (deals all three options from one tier,
+  for testing it in isolation — unset in normal play), `?tuning=1`. Backtick toggles
+  the tuning panel, tab arms the Special when the meter is full, enter deals three
+  new lines, esc re-deals the same three.
 - Content line ids are `<arena-without-underscores>-<round>-<tier>-<nnn>`, e.g.
   `groupchat-debate-haymaker-001`. SPEC §3.3 sketches an abbreviated form; the
   validator standardises on the unabbreviated one.

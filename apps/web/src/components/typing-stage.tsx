@@ -1,25 +1,26 @@
 "use client";
 
 /**
- * One line, typed, resolved. SPEC §2.4, §2.5, §2.6.
+ * Three lines, one choice, one resolution. SPEC §2.3, §2.4, §2.5, §2.6.
  *
  * Everything here that looks like match flow is still scaffolding — the
- * three-line choice (T-04), the opponent (T-07) and the round clock (T-05) land
- * later, and the opponent is a dummy that only ever takes damage. What is real
- * is the loop: type a line, finish it, watch the number land on HP and the
- * momentum meter charge or empty.
+ * opponent (T-07) and the round clock (T-05) land later, and the opponent is a
+ * dummy that only ever takes damage. What is real is the loop: three options
+ * stand, the first matching keystroke commits you to one, finishing it lands
+ * damage, and enter deals three more.
  *
  * RoundState lives here rather than in LineRun because HP, momentum and the
- * Special have to survive the transition to the next line; only the per-line
- * clock resets, which is what the remount key does.
+ * Special have to survive the deal; only the per-line clock resets, which is
+ * what the remount key does.
  */
 
-import { linesForRound, POOL, type ContentLine } from "@typefeud/content";
+import { dealThree } from "@typefeud/content";
 import {
+  activeLine,
   applyKeystroke,
   BACKSPACE,
   computeDamage,
-  createLineProgress,
+  dealOptions,
   resolveLine,
   ROUND_DURATION_MS,
   specialReady,
@@ -31,93 +32,67 @@ import {
   type PlayerState,
   type RoundState,
 } from "@typefeud/game";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DevFlags } from "@/dev/flags";
 import { TuningPanel, useTuning } from "@/dev/tuning";
 import { FighterBar } from "@/components/fighter-bar";
 import { ImpactBurst } from "@/components/impact-burst";
+import { OptionCards } from "@/components/option-cards";
 import { TypingSurface } from "@/components/typing-surface";
 
-const toLine = (line: ContentLine): Line => ({
-  id: line.id,
-  tier: line.tier,
-  text: line.text,
-  wordCount: line.wordCount,
-});
-
 /**
- * Only the Group Chat debate pool is authored so far (T-11 writes the rest), so
- * a round with no lines yet falls back rather than showing an empty stage.
+ * Selection is unseeded for now: `rng` is a parameter of `dealThree`, and T-06
+ * (#6) replaces this argument with a seeded PRNG plus the cross-match ring
+ * buffer of SPEC §3.6. Within a match, `seenLineIds` already prevents repeats.
  */
-function candidates(flags: DevFlags): Line[] {
-  const forRound = linesForRound(flags.round);
-  const pools = [
-    forRound.filter((line) => line.tier === flags.tier),
-    forRound,
-    POOL.filter((line) => line.tier === flags.tier),
-    POOL,
-  ];
-  return (pools.find((pool) => pool.length > 0) ?? []).map(toLine);
-}
+const deal = (flags: DevFlags, seen: readonly string[]): [Line, Line, Line] =>
+  dealThree({ round: flags.round, tier: flags.tier }, seen, Math.random);
 
-function player(slot: 0 | 1, line: Line): PlayerState {
+function player(slot: 0 | 1, options: [Line, Line, Line]): PlayerState {
   return {
     slot,
     hp: 100,
-    // All three options are the same line until the choice lands in T-04.
-    options: [line, line, line],
-    progress: createLineProgress(line.id),
+    options,
+    // Null until the player types: choosing the line is the first keystroke.
+    progress: null,
     momentum: 0,
     specialArmed: false,
     seenLineIds: [],
   };
 }
 
-function newRound(flags: DevFlags, line: Line): RoundState {
+function newRound(flags: DevFlags): RoundState {
   return {
     round: flags.round,
     endsAt: ROUND_DURATION_MS[flags.round],
-    players: [player(0, line), player(1, line)],
+    players: [player(0, deal(flags, [])), player(1, deal(flags, []))],
     rngCursor: 0,
   };
 }
 
-/** Put a fresh line in front of the player, carrying HP, momentum and the Special. */
-function withLine(state: RoundState, line: Line): RoundState {
-  const [you, opponent] = state.players;
-  return {
-    ...state,
-    players: [
-      { ...you, options: [line, line, line], progress: createLineProgress(line.id) },
-      opponent,
-    ],
-  };
-}
-
 export function TypingStage({ flags }: { flags: DevFlags }) {
-  const lines = useMemo(() => candidates(flags), [flags]);
-  const [run, setRun] = useState({ index: 0, attempt: 0 });
-  const [state, setState] = useState<RoundState>(() => newRound(flags, lines[0]!));
-  const line = lines[run.index % lines.length]!;
+  const [state, setState] = useState<RoundState>(() => newRound(flags));
+  // Bumped by every deal, including a restart of the same three. It is the
+  // remount key, and remounting is the per-line clock reset — no effect has to
+  // reach in and clear the old one.
+  const [generation, setGeneration] = useState(0);
 
   const next = useCallback(() => {
-    const index = run.index + 1;
-    setRun({ index, attempt: 0 });
-    setState((current) => withLine(current, lines[index % lines.length]!));
-  }, [run.index, lines]);
+    setState((current) =>
+      dealOptions(current, 0, deal(flags, current.players[0].seenLineIds)),
+    );
+    setGeneration((n) => n + 1);
+  }, [flags]);
 
   const restart = useCallback(() => {
-    setRun((r) => ({ ...r, attempt: r.attempt + 1 }));
-    setState((current) => withLine(current, line));
-  }, [line]);
+    setState((current) => dealOptions(current, 0, current.players[0].options));
+    setGeneration((n) => n + 1);
+  }, []);
 
-  // Remounting on the key is the clock reset: a fresh line is a fresh timer,
-  // with no effect reaching in to clear the old one. The round itself persists.
   return (
     <LineRun
-      key={`${line.id}-${run.attempt}`}
+      key={generation}
       flags={flags}
-      line={line}
       state={state}
       setState={setState}
       onNext={next}
@@ -128,14 +103,12 @@ export function TypingStage({ flags }: { flags: DevFlags }) {
 
 function LineRun({
   flags,
-  line,
   state,
   setState,
   onNext,
   onRestart,
 }: {
   flags: DevFlags;
-  line: Line;
   state: RoundState;
   setState: React.Dispatch<React.SetStateAction<RoundState>>;
   onNext: () => void;
@@ -153,8 +126,10 @@ function LineRun({
 
   const { tuning } = useTuning();
   const [you, opponent] = state.players;
-  const progress = you.progress!;
-  const complete = progress.charIndex >= line.text.length;
+  const progress = you.progress;
+  // Null until the first keystroke picks one of the three (SPEC §2.3).
+  const line = activeLine(you);
+  const complete = line !== null && progress !== null && progress.charIndex >= line.text.length;
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
@@ -183,6 +158,7 @@ function LineRun({
       roundStart.current ??= performance.now();
       const t = performance.now() - roundStart.current;
       setLastKeyAt(t);
+      // Before a line is locked in this is the choice; after it, a character.
       setState((current) => applyKeystroke(current, { t, key }));
     };
 
@@ -204,24 +180,26 @@ function LineRun({
   // rate progress goes on the wire (SPEC §4.3), and is plenty for a number.
   useEffect(() => {
     const base = roundStart.current;
-    if (base === null || progress.startedAt === null || complete) return;
+    if (base === null || !progress?.startedAt || complete) return;
     const id = window.setInterval(() => setNow(performance.now() - base), 100);
     return () => window.clearInterval(id);
-  }, [progress.startedAt, complete]);
+  }, [progress?.startedAt, complete]);
 
+  const started = progress?.startedAt != null;
   const elapsed =
-    progress.startedAt === null
+    progress?.startedAt == null
       ? 0
       : Math.max(complete ? lastKeyAt : now, lastKeyAt) - progress.startedAt;
-  const started = progress.startedAt !== null;
-  const errors = uncorrectedErrors(progress);
-  const lineWpm = wpm(progress.charIndex, elapsed);
+  const errors = progress ? uncorrectedErrors(progress) : 0;
+  const lineWpm = progress ? wpm(progress.charIndex, elapsed) : 0;
   // In flight this is a preview of what the line is worth; once it lands, the
   // resolved outcome replaces it so the readout and the burst never disagree.
-  const preview = computeDamage(
-    { tier: line.tier, uncorrectedErrors: errors, lineWpm, special: you.specialArmed },
-    tuning,
-  );
+  const preview = line
+    ? computeDamage(
+        { tier: line.tier, uncorrectedErrors: errors, lineWpm, special: you.specialArmed },
+        tuning,
+      )
+    : null;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-7 p-10">
@@ -246,45 +224,71 @@ function LineRun({
 
       <header className="flex items-baseline justify-between">
         <span className="text-muted text-xs tracking-[0.3em] uppercase">
-          Round · {state.round} · {line.tier}
+          Round · {state.round} · {line ? line.tier : "choose your line"}
         </span>
-        <span className="text-muted text-xs tracking-[0.24em] uppercase">{line.id}</span>
+        <span className="text-muted text-xs tracking-[0.24em] uppercase">{line?.id ?? "—"}</span>
       </header>
 
       {/* Outside the typing panel's bounding box, always — SPEC §6.5. */}
       <ImpactBurst outcome={outcome} />
 
-      <TypingSurface text={line.text} progress={progress} />
+      {line && progress ? (
+        <TypingSurface text={line.text} progress={progress} />
+      ) : (
+        <ChoosePrompt />
+      )}
+
+      <OptionCards options={you.options} lockedId={progress?.lineId ?? null} tuning={tuning} />
 
       <div className="grid grid-cols-4 gap-5">
         <Stat label="WPM" value={started ? Math.round(lineWpm) : "—"} tone="you" />
         <Stat label="Errors" value={errors} tone={errors > 0 ? "error" : "muted"} />
         <Stat
           label="Damage"
-          value={outcome ? outcome.damage : started ? preview.damage.toFixed(1) : "—"}
+          value={outcome ? outcome.damage : started && preview ? preview.damage.toFixed(1) : "—"}
           tone={outcome ? "momentum" : "muted"}
         />
         <Stat
           label="Self"
-          value={outcome ? outcome.selfDamage : preview.selfDamage}
-          tone={preview.selfDamage > 0 ? "error" : "muted"}
+          value={outcome ? outcome.selfDamage : (preview?.selfDamage ?? 0)}
+          tone={preview && preview.selfDamage > 0 ? "error" : "muted"}
         />
       </div>
 
       <footer className="text-muted flex items-baseline justify-between text-xs">
         <span>
           {complete
-            ? "line clear · enter for the next one"
-            : specialReady(you) && !you.specialArmed
-              ? "meter full · tab to arm the special"
-              : "type it · backspace repairs"}
+            ? "line clear · enter deals three more"
+            : !line
+              ? "three on offer · type the first character of the one you want"
+              : specialReady(you) && !you.specialArmed
+                ? "meter full · tab to arm the special"
+                : "type it · backspace repairs"}
         </span>
         <span className="tracking-[0.18em]">
           {flags.bot ? "BOT · pending T-07 · " : ""}
-          {"` TUNING · TAB SPECIAL · ENTER NEXT · ESC RESTART"}
+          {"` TUNING · TAB SPECIAL · ENTER DEAL · ESC RESTART"}
         </span>
       </footer>
     </main>
+  );
+}
+
+/**
+ * The typing surface before a line is chosen. Same panel and same metrics as
+ * the real one, so committing to a line does not move the page under the
+ * player — only the text inside the box changes.
+ */
+function ChoosePrompt() {
+  return (
+    <div className="border-edge bg-panel border-2 px-9 py-8">
+      <p
+        className="text-muted font-medium"
+        style={{ fontSize: "32px", lineHeight: 1.7, letterSpacing: "0.01em" }}
+      >
+        pick one and start typing
+      </p>
+    </div>
   );
 }
 

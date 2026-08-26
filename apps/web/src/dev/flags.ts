@@ -4,7 +4,8 @@
  *
  *   ?bot=1     start against a ghost, skipping the queue
  *   ?round=3   jump straight to a round (0 trigger, 1 debate, 2 roast, 3 fight)
- *   ?tier=     which tier of line to serve (jab | combo | haymaker)
+ *   ?tier=     deal all three options from one tier (jab | combo | haymaker),
+ *              for testing a tier in isolation. Unset means a real choice.
  *   ?tuning=1  open the tuning panel on load (it also toggles with `)
  */
 
@@ -15,14 +16,15 @@ export const ROUND_BY_NUMBER: readonly RoundName[] = ["trigger", "debate", "roas
 export interface DevFlags {
   bot: boolean;
   round: RoundName;
-  tier: Tier;
+  /** unset in normal play — the three-line choice deals one of each tier */
+  tier?: Tier;
   tuning: boolean;
 }
 
 export const DEFAULT_FLAGS: DevFlags = {
   bot: false,
   round: "debate",
-  tier: "haymaker",
+  tier: undefined,
   tuning: false,
 };
 
@@ -45,8 +47,7 @@ export function parseDevFlags(params: RawParams): DevFlags {
   return {
     bot: boolFlag(params.bot),
     round: round ?? DEFAULT_FLAGS.round,
-    tier:
-      tier === "jab" || tier === "combo" || tier === "haymaker" ? tier : DEFAULT_FLAGS.tier,
+    tier: tier === "jab" || tier === "combo" || tier === "haymaker" ? tier : undefined,
     tuning: boolFlag(params.tuning),
   };
 }
