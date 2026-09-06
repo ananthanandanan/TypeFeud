@@ -14,7 +14,7 @@ line shows a readout, not damage.
 
 **Next action is [issue #3](https://github.com/ananthanandanan/TypeFeud/issues/3)** —
 damage and momentum on line completion. See [`TASKS.md`](./TASKS.md) for the
-14-issue board, [`docs/milestone-1-handoff.md`](./docs/milestone-1-handoff.md) for
+14-issue board, [`docs/handoff.md`](./docs/handoff.md) for
 what the last session decided, and [`docs/design/README.md`](./docs/design/README.md)
 for the design system.
 

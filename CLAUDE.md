@@ -2,56 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Start here: issue #5
+## Start here
 
 Planning is finished. `SPEC.md` is approved, `TASKS.md` holds 14 tasks, and GitHub
 issues **#1–#14** exist mapping T-01…T-14 one-to-one. Do not run `/ank:spec` or
-`/ank:tasks` again — both are done.
+`/ank:tasks` again — both are done. If asked what to build, the answer is code.
 
-**Milestone 1 is done.** #2 merged as [PR #15](https://github.com/ananthanandanan/TypeFeud/pull/15)
-(`applyKeystroke` and the SPEC §6.2 typing surface) and #3 as
-[PR #16](https://github.com/ananthanandanan/TypeFeud/pull/16) (`resolveLine`,
-momentum, the Special). A clean haymaker at 89 WPM reads 42 and the opponent drops
-to 58, confirmed by hand. See `docs/milestone-1-handoff.md` and
-`docs/issue-3-handoff.md`.
+**Read [`docs/handoff.md`](./docs/handoff.md) first.** It is the single source of
+where the project is, what to do next, and which past decisions still constrain the
+work. This file carries the standing rules; the handoff carries the position.
 
-**#4 merged as [PR #17](https://github.com/ananthanandanan/TypeFeud/pull/17) on
-2026-08-26**, opening Milestone 2 — three options at all times, first-keystroke
-lock-in, `lockIn` and `dealOptions` in the engine, `dealThree` in
-`packages/content`. Confirmed by hand at `?round=1`. See
-`docs/issue-4-handoff.md`, and `docs/plan/three-line-choice.html` for the plan it
-was built from.
-
-**#5 is done** — the full match runs arena → trigger → debate → intermission →
-roast → intermission → fight → results. `tickRound`, `roundResult`, `startingHp`
-and `resolveMatch` are implemented and `packages/game` has no stubs left. The
-match sequence is `apps/web/src/match/machine.ts` (pure, React-free, ready for
-#13 to move server-side) and the clock is `use-match.ts`. See
-`docs/issue-5-handoff.md`.
-
-It moved the spec three times, all written down: §2.7 gained the 0-HP rule for
-rounds 1–2 (a knockout ends **any** round, because HP never rises and the carry is
-binary) plus the draw and momentum rules; §2.2 gained the trigger's quick-draw end
-condition; §4.2 gained `roundResult` and `startingHp`.
-
-**The next coding task is [#7 — the scripted ghost opponent](https://github.com/ananthanandanan/TypeFeud/issues/7)
-or [#6 — seeded selection](https://github.com/ananthanandanan/TypeFeud/issues/6).**
-#7 is the one that makes the game a contest: solo, the opponent never attacks, so
-every round is won by default and SPEC §9's open question — does anyone ever pick
-anything but the safe line? — still cannot be answered. #6 deletes the hydration
-workaround in `use-match.ts`.
-
-**#1 (CI and repo-wide linting) is still open and unblocked** — `pnpm test &&
-pnpm typecheck && pnpm build` as a GitHub Actions job body. Worth doing early so the
-gate runs on PRs rather than on your machine.
+The short version as of 2026-09-06: **Milestone 1 is done and Milestone 2 is half
+done.** #2, #3, #4 and #5 are merged (PRs #15–#18) and a full match now runs solo
+from arena reveal to results. **The next coding task is
+[#7 — the scripted ghost](https://github.com/ananthanandanan/TypeFeud/issues/7)**,
+which is what turns the flow into a contest, with
+**[#1 — CI](https://github.com/ananthanandanan/TypeFeud/issues/1)** small, unblocked
+and overdue.
 
 Issues are cut **vertically**: one issue = one PR = one demoable thing. Engine work
 and the UI that renders it ship together. Do not split a task into an engine PR and
 a UI PR.
-
-Two things outstanding, neither blocking: the GitHub Project board was never created
-(the token needs `gh auth refresh -s project,read:project`), and the design pass has
-no issue yet — it would land as #18 now that #4 took #17.
 
 ## Commands
 
@@ -78,6 +49,11 @@ its section numbers (`SPEC §2.5`). When a change contradicts the spec, the spec
 moves too — say so rather than silently diverging. `README.md` is the operator's
 manual; `docs/scaffold-handoff.md` records what the scaffold session decided and
 why.
+
+**`docs/handoff.md` is the one handoff** — where the project is, what is next, and
+which past decisions still bind. Rewrite it in place at the end of an issue; do not
+add a second dated handoff beside it. Per-issue detail lives in git history and in
+the approved plan under `docs/plan/`.
 
 ## Design
 

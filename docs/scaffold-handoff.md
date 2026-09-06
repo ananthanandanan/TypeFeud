@@ -27,7 +27,7 @@ before any coding. That happened on 2026-08-25:
 ```
 
 Milestone 1 has since been built too — issue #2 merged as PR #15 on 2026-08-26.
-See `docs/milestone-1-handoff.md`, which supersedes this document for anything
+See `docs/handoff.md`, which supersedes this document for anything
 about the game itself.
 
 **For what to do next, read `CLAUDE.md`.** Short version: start at issue #3, damage

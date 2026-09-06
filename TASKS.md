@@ -42,14 +42,14 @@ good here, no amount of animation will save it.
   - **Dev:** `?bot=1` and `?round=3` shortcuts plus the tuning panel (SPEC §7.2) — they pay for themselves across every later milestone.
   - Done when you can type a hardcoded line in the browser and it feels good.
   - _Unblocks_ everything
-  - **Merged in [#15](https://github.com/ananthanandanan/TypeFeud/pull/15), 2026-08-26.** Exit criterion confirmed by hand. Two spec-touching changes landed with it: `LineProgress` gained `typedChars` (§6.2 needs the keys actually pressed, not just the error indices) and the damage math now takes an injected `Tuning` object so the panel can drive it. See `docs/milestone-1-handoff.md`.
+  - **Merged in [#15](https://github.com/ananthanandanan/TypeFeud/pull/15), 2026-08-26.** Exit criterion confirmed by hand. Two spec-touching changes landed with it: `LineProgress` gained `typedChars` (§6.2 needs the keys actually pressed, not just the error indices) and the damage math now takes an injected `Tuning` object so the panel can drive it.
 
 - [x] **[T-03 #3](https://github.com/ananthanandanan/TypeFeud/issues/3)** `feat: damage and momentum on line completion` `M`
   - **Engine:** `resolveLine` composing the existing `computeDamage` with momentum charge/reset and special consumption — +1 per clean line, reset on any uncorrected error, special at 4 charges for 1.8× (SPEC §2.5, §2.6).
   - **UI:** damage number and momentum meter, both firing **on line completion, not per keystroke** — per-keystroke feedback is noise at speed (SPEC §6.3).
   - Done when finishing a line shows a number that responds to your accuracy and speed.
   - **Depends on:** T-02 (#2)
-  - **Merged in [#16](https://github.com/ananthanandanan/TypeFeud/pull/16), 2026-08-26.** Confirmed by hand: a clean haymaker at 89 WPM reads 42 and the opponent drops to 58, reproducing SPEC §2.5's worked example. Two things landed with it that touch the spec: `resolveLine`'s signature is now `(state, { now, slot? }, tuning?) => { state, outcome }` — it has to return new state, and WPM needs the completing keystroke's timestamp — and `momentumChargesForSpecial` joined `Tuning`. SPEC §4.2 was brought in line by T-04 (#4). See `docs/issue-3-handoff.md`.
+  - **Merged in [#16](https://github.com/ananthanandanan/TypeFeud/pull/16), 2026-08-26.** Confirmed by hand: a clean haymaker at 89 WPM reads 42 and the opponent drops to 58, reproducing SPEC §2.5's worked example. Two things landed with it that touch the spec: `resolveLine`'s signature is now `(state, { now, slot? }, tuning?) => { state, outcome }` — it has to return new state, and WPM needs the completing keystroke's timestamp — and `momentumChargesForSpecial` joined `Tuning`. SPEC §4.2 was brought in line by T-04 (#4).
 
 ---
 
@@ -63,13 +63,14 @@ are tuned. All solo, no network.
   - **UI:** three options visible at all times; the first keystroke matching a line's first character locks it in and dims the rest; all three refresh on completion (SPEC §2.3).
   - Watch the failure mode: if players always take the first line, the mechanic needs rework (SPEC §9).
   - **Depends on:** T-03 (#3)
-  - **Merged in [#17](https://github.com/ananthanandanan/TypeFeud/pull/17), 2026-08-26.** Confirmed by hand at `?round=1`. `lockIn` and `dealOptions` joined the engine and `dealThree` joined `packages/content`, dealing one line per tier most-constrained-tier-first so no two options share a first character. SPEC §2.3 gained the two rules it did not answer (the locking keystroke is the line's first character; options must not collide) and §4.2 gained both functions. `?tier=` now deals all three slots from one tier instead of filtering. The §9 failure mode is **still open** — no opponent pressure until T-07 (#7), six debate lines until T-11 (#11), damage untuned until T-12 (#12). Plan: `docs/plan/three-line-choice.html`; decisions: `docs/issue-4-handoff.md`.
+  - **Merged in [#17](https://github.com/ananthanandanan/TypeFeud/pull/17), 2026-08-26.** Confirmed by hand at `?round=1`. `lockIn` and `dealOptions` joined the engine and `dealThree` joined `packages/content`, dealing one line per tier most-constrained-tier-first so no two options share a first character. SPEC §2.3 gained the two rules it did not answer (the locking keystroke is the line's first character; options must not collide) and §4.2 gained both functions. `?tier=` now deals all three slots from one tier instead of filtering. The §9 failure mode is **still open** — no opponent pressure until T-07 (#7), six debate lines until T-11 (#11), damage untuned until T-12 (#12). Plan: `docs/plan/three-line-choice.html`.
 
-- [ ] **[T-05 #5](https://github.com/ananthanandanan/TypeFeud/issues/5)** `feat: full match flow — rounds, timers, HP, and outcome` `L`
+- [x] **[T-05 #5](https://github.com/ananthanandanan/TypeFeud/issues/5)** `feat: full match flow — rounds, timers, HP, and outcome` `L`
   - **Engine:** `tickRound` and `resolveMatch`. Deadline-based against `endsAt`, no tick loop (SPEC §4.6). Rounds 1–2 hold their own 100 HP pools; winners carry +10 into Round 3, trigger winner +5; Round 3 ends on KO or timer (SPEC §2.7).
   - **UI:** split-screen layout, player always left, HP bars top corners, round timers rendered locally (SPEC §6.1).
   - Done when a full trigger→debate→roast→fight match runs start to finish solo.
   - **Depends on:** T-04 (#4)
+  - **Merged in [#18](https://github.com/ananthanandanan/TypeFeud/pull/18), 2026-09-06.** `packages/game` has no stubs left; `roundResult` and `startingHp` joined the two the task named. The phase sequence lives in `apps/web/src/match/machine.ts`, pure and React-free so T-13 (#13) moves it rather than rewrites it. Three spec moves: §2.7 gained the 0-HP rule for rounds 1–2 (a knockout ends **any** round), the draw rule and the momentum rule; §2.2 gained the trigger's quick-draw end condition, and its winner is read from progress rather than HP so the result does not depend on resolve/tick ordering; §4.2 gained both new functions. Dealing follows the impact beat instead of the enter key. Plan: `docs/plan/full-match-flow.html`.
 
 - [ ] **[T-06 #6](https://github.com/ananthanandanan/TypeFeud/issues/6)** `feat: seeded line selection and replay trace format` `M`
   - Seeded PRNG; never repeat a line within a match, nor within the player's last 3 matches via a localStorage ring buffer (SPEC §3.6).
