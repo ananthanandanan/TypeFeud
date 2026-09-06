@@ -9,7 +9,15 @@
  */
 
 import { arenas } from "@typefeud/content";
-import { roundResult, startingHp, type RoundResult, type RoundState } from "@typefeud/game";
+import {
+  INTERMISSION_DURATION_MS,
+  roundResult,
+  startingHp,
+  type RoundName,
+  type RoundResult,
+  type RoundState,
+} from "@typefeud/game";
+import { useEffect, useState } from "react";
 import type { DevFlags } from "@/dev/flags";
 import { TuningPanel } from "@/dev/tuning";
 import { useMatch } from "@/match/use-match";
@@ -30,7 +38,12 @@ export function MatchStage({ flags }: { flags: DevFlags }) {
       {phase === "arena" ? <ArenaReveal /> : null}
 
       {phase === "round" || phase === "intermission" ? (
-        <MatchHud round={round} startedAt={roundStartedAt} opponentName={opponentName} />
+        <MatchHud
+          round={round}
+          startedAt={roundStartedAt}
+          opponentName={opponentName}
+          live={phase === "round"}
+        />
       ) : null}
 
       {phase === "round" ? (
@@ -47,7 +60,13 @@ export function MatchStage({ flags }: { flags: DevFlags }) {
         )
       ) : null}
 
-      {phase === "intermission" ? <Intermission round={round} results={match.results} /> : null}
+      {phase === "intermission" ? (
+        <Intermission
+          round={round}
+          results={match.results}
+          next={match.pending?.round ?? null}
+        />
+      ) : null}
 
       {phase === "results" && match.outcome ? (
         <MatchEnd outcome={match.outcome} opponentName={opponentName} />
@@ -78,7 +97,15 @@ function ArenaReveal() {
  * The carry line matters more than it looks: it is the only place the player
  * learns why round 3 opens above 100 HP.
  */
-function Intermission({ round, results }: { round: RoundState; results: RoundResult[] }) {
+function Intermission({
+  round,
+  results,
+  next,
+}: {
+  round: RoundState;
+  results: RoundResult[];
+  next: RoundName | null;
+}) {
   const result = roundResult(round);
   if (!result) return null;
 
@@ -103,9 +130,34 @@ function Intermission({ round, results }: { round: RoundState; results: RoundRes
         {result.hp[0]} — {result.hp[1]}
         {carry > 0 ? ` · +${carry} HP into the fight` : ""}
       </span>
-      <span className="text-muted mt-4 text-[11px] tracking-[0.2em] uppercase">
-        taunt exchange pending #8
-      </span>
+      {next ? <NextRoundIn next={next} /> : null}
     </div>
+  );
+}
+
+/**
+ * How long until the next round. Counted from mount rather than from a
+ * timestamp on the state, because this component mounts exactly when the
+ * intermission begins and unmounts when it ends — the same beat `useMatch`
+ * has already scheduled the transition for.
+ *
+ * Like the round clock, this paints a number and touches nothing.
+ */
+function NextRoundIn({ next }: { next: RoundName }) {
+  const [remaining, setRemaining] = useState(INTERMISSION_DURATION_MS);
+
+  useEffect(() => {
+    const startedAt = performance.now();
+    const id = window.setInterval(
+      () => setRemaining(Math.max(0, INTERMISSION_DURATION_MS - (performance.now() - startedAt))),
+      100,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <span className="text-muted mt-6 text-[11px] tracking-[0.2em] uppercase">
+      {next} in {Math.ceil(remaining / 1000)}
+    </span>
   );
 }

@@ -55,10 +55,6 @@ export function MatchEnd({ outcome, opponentName }: { outcome: MatchOutcome; opp
           </div>
         ))}
       </div>
-
-      <p className="text-muted text-xs tracking-[0.2em] uppercase">
-        results screen pending #9 · reload to run it again
-      </p>
     </div>
   );
 }

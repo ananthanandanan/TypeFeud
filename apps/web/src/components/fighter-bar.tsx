@@ -16,6 +16,7 @@ export function FighterBar({
   max = 100,
   momentum,
   specialArmed,
+  showSpecialHint = true,
   side,
 }: {
   name: string;
@@ -28,6 +29,8 @@ export function FighterBar({
   max?: number;
   momentum: number;
   specialArmed: boolean;
+  /** false where the keyboard is not live, so the meter never offers a key that does nothing */
+  showSpecialHint?: boolean;
   side: "you" | "opponent";
 }) {
   const mirrored = side === "opponent";
@@ -55,6 +58,7 @@ export function FighterBar({
       <MomentumMeter
         momentum={momentum}
         specialArmed={specialArmed}
+        showSpecialHint={showSpecialHint}
         mirrored={mirrored}
       />
     </div>
@@ -68,10 +72,12 @@ export function FighterBar({
 function MomentumMeter({
   momentum,
   specialArmed,
+  showSpecialHint,
   mirrored,
 }: {
   momentum: number;
   specialArmed: boolean;
+  showSpecialHint: boolean;
   mirrored: boolean;
 }) {
   const full = momentum >= MOMENTUM_CHARGES_FOR_SPECIAL;
@@ -91,7 +97,7 @@ function MomentumMeter({
       </div>
       {/* Never hue alone: the meter reads as full from the pips, and the label
           spells out what it unlocked and how to spend it. */}
-      {full || specialArmed ? (
+      {showSpecialHint && (full || specialArmed) ? (
         <span className="text-momentum text-[11px] font-extrabold tracking-[0.18em]">
           {specialArmed ? "SPECIAL ARMED ×1.8" : "SPECIAL · TAB"}
         </span>

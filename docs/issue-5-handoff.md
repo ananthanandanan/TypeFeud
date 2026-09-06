@@ -117,11 +117,13 @@ it is invisible.
   content review inside a flow PR.
 - **The trigger has no provocation.** §2.2 wants "dev_p has left you on read for 4
   hours" above the word. The pool has the word and not the setup, and the schema
-  has no field for arena-level framing. The slot is laid out and labelled rather
-  than filled with an invented line, which invariant 3 forbids. #11.
+  has no field for arena-level framing. The word stands alone rather than under an
+  invented line, which invariant 3 forbids. #11.
 - **The intermission is a beat, not a screen.** The phase holds its 10 seconds and
-  shows the round result and the carry — the only place the player learns why the
-  fight opens above 100. The taunt exchange is #8.
+  shows the round result, the carry — the only place the player learns why the
+  fight opens above 100 — and a countdown to the next round. The taunt exchange is
+  #8, and the space it will occupy is left empty rather than captioned: unbuilt
+  work belongs in the issue tracker, not on the player's screen.
 - **`match-end.tsx` is not the results screen.** #9 replaces the file. It shows the
   winner and the per-round HP so a hand-check can tell a fight won on HP from one
   won by knockout.

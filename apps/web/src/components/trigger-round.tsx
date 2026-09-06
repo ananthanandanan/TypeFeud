@@ -25,10 +25,6 @@ export function TriggerRound({ round }: { round: RoundState }) {
 
   return (
     <div className="flex flex-col items-center gap-7 py-6">
-      <p className="text-muted text-[11px] tracking-[0.24em] uppercase">
-        provocation pending #11
-      </p>
-
       {progress ? (
         <TypingSurface text={word} progress={progress} />
       ) : (

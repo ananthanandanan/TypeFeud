@@ -32,11 +32,19 @@ export function MatchHud({
   round,
   startedAt,
   opponentName,
+  live,
 }: {
   round: RoundState;
   /** performance.now() when this round began, or null before it has */
   startedAt: number | null;
   opponentName: string;
+  /**
+   * Whether the round is being played right now. False across the intermission,
+   * where the HUD stays mounted showing the round that just ended — its clock
+   * has nothing left to count and its Special cannot be armed, so neither is
+   * offered rather than sitting there expired.
+   */
+  live: boolean;
 }) {
   const [you, them] = round.players;
   // Round 3 opens above the base pool (SPEC §2.7), so the bar has to be scaled
@@ -52,6 +60,7 @@ export function MatchHud({
         max={max}
         momentum={you.momentum}
         specialArmed={you.specialArmed}
+        showSpecialHint={live}
         side="you"
       />
 
@@ -62,7 +71,11 @@ export function MatchHud({
         <span className="text-[26px] font-extrabold tracking-[0.22em]">
           {ROUND_TITLE[round.round]}
         </span>
-        <RoundClock round={round} startedAt={startedAt} />
+        {/* The slot keeps its height either way, so the HUD does not jump
+            when a round ends (SPEC §6.2's no-layout-shift rule). */}
+        <div className="flex h-11 items-center">
+          {live ? <RoundClock round={round} startedAt={startedAt} /> : null}
+        </div>
       </div>
 
       <FighterBar
@@ -71,6 +84,7 @@ export function MatchHud({
         max={max}
         momentum={them.momentum}
         specialArmed={them.specialArmed}
+        showSpecialHint={live}
         side="opponent"
       />
     </div>
