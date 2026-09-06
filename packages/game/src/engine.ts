@@ -289,9 +289,17 @@ export function tickRound(state: RoundState, now: number): RoundState {
 
   const expired = now >= state.endsAt;
   const knockout = state.players.some((player) => player.hp <= 0);
-  if (!expired && !knockout) return state;
+  // SPEC §2.2 — the trigger is a quick-draw: first to type the word correctly
+  // takes it, so a completed line ends it rather than the clock running out.
+  const quickDraw = state.round === "trigger" && state.players.some(hasCompletedLine);
+  if (!expired && !knockout && !quickDraw) return state;
 
   return { ...state, status: "over" };
+}
+
+function hasCompletedLine(player: PlayerState): boolean {
+  const line = activeLine(player);
+  return line !== null && player.progress !== null && isLineComplete(line.text, player.progress);
 }
 
 /**
@@ -306,8 +314,24 @@ export function roundResult(state: RoundState): RoundResult | null {
   if (state.status !== "over") return null;
 
   const [you, them] = state.players;
-  const winner: PlayerSlot | null = you.hp === them.hp ? null : you.hp > them.hp ? 0 : 1;
-  return { round: state.round, hp: [you.hp, them.hp], winner };
+  return { round: state.round, hp: [you.hp, them.hp], winner: winnerOf(state) };
+}
+
+function winnerOf(state: RoundState): PlayerSlot | null {
+  const [you, them] = state.players;
+
+  // SPEC §2.2 — the trigger is won by finishing the word, not by out-damaging.
+  // Reading it from progress rather than HP is what makes the result the same
+  // whether the caller resolved the completing line before ticking or after:
+  // the quick-draw closes the round on that keystroke, and a winner derived
+  // from HP would depend on whether the damage had landed yet.
+  if (state.round === "trigger") {
+    const first = hasCompletedLine(you);
+    const second = hasCompletedLine(them);
+    return first === second ? null : first ? 0 : 1;
+  }
+
+  return you.hp === them.hp ? null : you.hp > them.hp ? 0 : 1;
 }
 
 /**

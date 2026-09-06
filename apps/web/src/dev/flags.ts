@@ -3,7 +3,9 @@
  * is faster for being able to jump straight to the state under test.
  *
  *   ?bot=1     start against a ghost, skipping the queue
- *   ?round=3   jump straight to a round (0 trigger, 1 debate, 2 roast, 3 fight)
+ *   ?round=3   open the match at a round (0 trigger, 1 debate, 2 roast, 3 fight).
+ *              The sequence runs on from there, so ?round=2 still ends at the
+ *              fight — it seeds where the match starts, it does not pin it.
  *   ?tier=     deal all three options from one tier (jab | combo | haymaker),
  *              for testing a tier in isolation. Unset means a real choice.
  *   ?tuning=1  open the tuning panel on load (it also toggles with `)

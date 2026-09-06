@@ -1,4 +1,4 @@
-import { TypingStage } from "@/components/typing-stage";
+import { MatchStage } from "@/components/match-stage";
 import { parseDevFlags } from "@/dev/flags";
 import { TuningProvider } from "@/dev/tuning";
 
@@ -11,7 +11,7 @@ export default async function Home({
 
   return (
     <TuningProvider initiallyOpen={flags.tuning}>
-      <TypingStage flags={flags} />
+      <MatchStage flags={flags} />
     </TuningProvider>
   );
 }

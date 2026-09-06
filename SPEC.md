@@ -62,6 +62,8 @@ A single provocation line appears (`dev_p has left you on read for 4 hours`), th
 
 First to type it correctly wins the trigger. Reward: **+5 HP in Round 1.** Deliberately small — this is a pacing beat and a topic-setter, not a swing.
 
+Completing the word **ends the round immediately** — that is what "first" means, and it is a third end condition alongside the deadline and the knockout (§2.7). If neither player types it inside the 2s, nobody takes the trigger and nobody carries the bonus. Damage dealt during the trigger is discarded with the round's HP pool; only who finished first is carried.
+
 ### 2.3 The three-line choice (core mechanic)
 
 During rounds 1–3, each player sees **three simultaneous options** at all times:

@@ -13,12 +13,19 @@ import { MOMENTUM_CHARGES_FOR_SPECIAL } from "@typefeud/game";
 export function FighterBar({
   name,
   hp,
+  max = 100,
   momentum,
   specialArmed,
   side,
 }: {
   name: string;
   hp: number;
+  /**
+   * What a full bar is worth. Round 3 opens above the base pool when a player
+   * carried an advantage (SPEC §2.7), so the bar is scaled rather than clamped
+   * — otherwise the carry is invisible until it has been spent.
+   */
+  max?: number;
   momentum: number;
   specialArmed: boolean;
   side: "you" | "opponent";
@@ -41,7 +48,7 @@ export function FighterBar({
       >
         <div
           className={`${fill} transition-[width] duration-300 ease-out`}
-          style={{ width: `${Math.max(0, Math.min(100, hp))}%` }}
+          style={{ width: `${Math.max(0, Math.min(100, (hp / max) * 100))}%` }}
         />
       </div>
 
