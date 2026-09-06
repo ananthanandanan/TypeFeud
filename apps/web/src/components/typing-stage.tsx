@@ -81,6 +81,7 @@ function newRound(flags: DevFlags, rng?: () => number): RoundState {
   return {
     round: flags.round,
     endsAt: ROUND_DURATION_MS[flags.round],
+    status: "live",
     players: [player(0, deal(flags, [], rng)), player(1, deal(flags, [], rng))],
     rngCursor: 0,
   };

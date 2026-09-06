@@ -1,0 +1,970 @@
+<!doctype html>
+<!--
+  IMPLEMENTATION PLAN — TypeFeud #5: full match flow
+  Botanical Almanac style. Self-contained: no external CSS/JS/fonts.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Full match flow — Implementation plan</title>
+        <style>
+            :root {
+                --bg: #f5f0e1;
+                --paper: #fbf8ec;
+                --paper-soft: #f1ead5;
+                --ink: #1a2e1f;
+                --ink-soft: #5a6b5a;
+                --accent: #b4541a;
+                --rule: #d8cfb4;
+                --dash: #b9b29a;
+                --tag-bg: #ece5d0;
+                --op-add: #2d5938;
+                --op-mod: #856104;
+                --op-del: #8a3320;
+            }
+            * { box-sizing: border-box; }
+            html, body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--ink);
+                font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+                font-size: 17px;
+                line-height: 1.55;
+            }
+            .page { max-width: 820px; margin: 0 auto; padding: 40px 24px 96px; }
+
+            .eyebrow {
+                font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-soft);
+            }
+            h1 {
+                font-size: 40px; line-height: 1.15;
+                margin: 6px 0 20px; font-weight: 600; color: var(--ink);
+                letter-spacing: -0.01em;
+            }
+            h2 { font-size: 26px; margin: 0; font-weight: 600; letter-spacing: -0.005em; }
+            h3 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+            p { margin: 8px 0; }
+            code { font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 0.92em; }
+
+            .prompt-box {
+                background: var(--paper-soft);
+                border: 1px solid var(--rule);
+                border-radius: 10px;
+                padding: 16px 18px;
+                margin: 20px 0 36px;
+            }
+            .prompt-box .plabel {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--accent);
+                margin-bottom: 6px;
+            }
+            .prompt-box p { margin: 0; color: var(--ink); font-size: 16px; }
+
+            .bubbles {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px; margin: 24px 0 56px;
+            }
+            .bubble {
+                background: #fff;
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                padding: 14px 16px;
+            }
+            .bubble .label {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 10px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-soft);
+            }
+            .bubble .value {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 18px; font-weight: 500;
+                margin-top: 4px; color: var(--ink);
+            }
+
+            section { margin: 56px 0; }
+            .section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+            .section-num {
+                font-family: ui-monospace, Menlo, monospace;
+                color: var(--ink-soft);
+                font-size: 11px; letter-spacing: 0.08em;
+                background: var(--tag-bg);
+                border-radius: 4px; padding: 2px 7px;
+            }
+            section > p:first-of-type { color: var(--ink-soft); margin: 4px 0 24px; }
+
+            .timeline { margin-top: 8px; }
+            .milestone {
+                display: grid;
+                grid-template-columns: 130px 28px 1fr;
+                gap: 14px; padding-bottom: 28px; position: relative;
+            }
+            .milestone .when {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; letter-spacing: 0.04em;
+                color: var(--ink-soft); padding-top: 4px; text-align: right;
+            }
+            .milestone .rail { position: relative; display: flex; justify-content: center; }
+            .milestone .rail::before {
+                content: ""; position: absolute;
+                top: 0; bottom: -28px; left: 50%;
+                width: 1px; background: var(--rule);
+                transform: translateX(-0.5px);
+            }
+            .milestone:last-child .rail::before { bottom: 0; }
+            .milestone .dot {
+                position: relative; z-index: 1;
+                width: 11px; height: 11px; border-radius: 50%;
+                margin-top: 8px;
+                background: var(--op-add); border: 2px solid var(--op-add);
+            }
+            .milestone.upcoming .dot { background: var(--bg); border: 2px solid var(--accent); }
+            .milestone .body { padding-top: 2px; }
+            .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+            .tag {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px;
+                background: var(--tag-bg);
+                border: 1px solid var(--rule);
+                padding: 2px 8px; border-radius: 4px; color: var(--ink);
+            }
+
+            .flow {
+                background: var(--paper);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 22px; overflow-x: auto;
+            }
+            .flow svg { width: 100%; height: auto; display: block; }
+            .legend {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; color: var(--ink-soft); margin-top: 12px;
+            }
+
+            .mock {
+                background: var(--paper);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 20px; margin: 16px 0;
+            }
+            .mock h3 { margin-bottom: 12px; }
+            .mock-note {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; color: var(--ink-soft); margin-top: 10px;
+            }
+
+            /* dark game surface inside the light mock card */
+            .screen {
+                background: #0b0d10; border: 2px solid #232a32;
+                font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+                color: #e8edf2; padding: 14px; font-size: 11px;
+            }
+            .hud { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: start; }
+            .hpwrap { display: flex; flex-direction: column; gap: 5px; }
+            .hprow { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+            .hpbar { height: 11px; background: #14181d; border: 2px solid #232a32; display: flex; }
+            .mo { display: flex; gap: 3px; }
+            .mo i { width: 13px; height: 5px; background: #232a32; display: block; }
+            .mo i.on { background: #f0e442; }
+            .stage {
+                margin: 14px 0; height: 84px; border: 1px dashed #232a32;
+                display: flex; align-items: center; justify-content: center;
+                color: #5a6672; letter-spacing: 0.2em; font-size: 10px;
+            }
+            .panel { background: #14181d; border: 2px solid #2b333c; padding: 10px 12px; }
+            .opts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+            .opt { background: #14181d; border: 2px solid #232a32; padding: 8px 10px; opacity: 0.4; }
+            .opt.locked { opacity: 1; border-color: #56b4e9; }
+            .dim { color: #5a6672; }
+
+            .files { display: grid; grid-template-columns: 1fr; gap: 0; }
+            .file-row {
+                display: grid; grid-template-columns: 80px 1fr;
+                gap: 12px; align-items: baseline;
+                border-bottom: 1px dashed var(--dash); padding: 10px 0;
+            }
+            .file-op {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+            }
+            .op-add { color: var(--op-add); }
+            .op-mod { color: var(--op-mod); }
+            .op-del { color: var(--op-del); }
+            .file-path { font-family: ui-monospace, Menlo, monospace; font-size: 14px; color: var(--ink); }
+            .file-note { color: var(--ink-soft); font-size: 14px; margin-top: 3px; display: block; }
+
+            pre.code {
+                background: var(--paper);
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                padding: 14px 16px; overflow-x: auto;
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 13px; line-height: 1.55; color: var(--ink);
+            }
+            .code-caption {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; color: var(--ink-soft); margin: 18px 0 6px;
+            }
+
+            .future-item { border-top: 1px solid var(--rule); padding: 16px 0; }
+            .future-item:last-child { border-bottom: 1px solid var(--rule); }
+            .future-item .meta {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.04em; color: var(--ink-soft); margin-top: 6px;
+            }
+
+            .node { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; }
+            .node-new { fill: var(--paper); stroke: var(--accent); stroke-width: 2.5; }
+            .node-label { font-family: ui-monospace, Menlo, monospace; font-size: 12px; fill: var(--ink); }
+            .node-sub { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+            .stroke-solid { stroke: var(--ink); stroke-width: 2; fill: none; }
+            .stroke-dash { stroke: var(--ink); stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+            .edge-label { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+
+            @media (max-width: 640px) {
+                .milestone { grid-template-columns: 90px 22px 1fr; gap: 10px; }
+                h1 { font-size: 32px; }
+                h2 { font-size: 22px; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="eyebrow">Implementation plan · TypeFeud · issue #5</div>
+            <h1>Full match flow — rounds, timers, HP and outcome</h1>
+
+            <div class="prompt-box">
+                <div class="plabel">Prompt</div>
+                <p>
+                    Close the last two engine stubs — <code>tickRound</code> and
+                    <code>resolveMatch</code> — deadline-based against <code>endsAt</code> with no
+                    tick loop, and build the split-screen fight screen on top of them. Rounds 1 and
+                    2 hold their own 100 HP pools and feed the winner +10 into round 3; the trigger
+                    winner carries +5. Decide what a 0-HP player does in rounds 1–2 and write it
+                    into the spec. The round clock takes the enter key over from #4, so dealing
+                    follows the impact beat instead of a keypress. Done when a full trigger →
+                    debate → roast → fight match runs start to finish, solo.
+                </p>
+            </div>
+
+            <div class="bubbles">
+                <div class="bubble">
+                    <div class="label">Effort</div>
+                    <div class="value">~4 days</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Files added</div>
+                    <div class="value">6</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Files updated</div>
+                    <div class="value">9</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Packages</div>
+                    <div class="value">game · web</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Stubs closed</div>
+                    <div class="value">2 of 2</div>
+                </div>
+                <div class="bubble">
+                    <div class="label">Spec moves</div>
+                    <div class="value">§2.7 · §4.2</div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────────────────────── -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">01</span>
+                    <h2>Milestones</h2>
+                </div>
+                <p>
+                    Engine first, because the UI is a rendering of it and every slice after the
+                    first is testable by hand. Slices 1–2 are invisible; slice 3 is the first thing
+                    worth looking at; slice 5 is the demo the issue asks for.
+                </p>
+
+                <div class="timeline">
+                    <div class="milestone">
+                        <div class="when">Slice 1</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Round lifecycle in the engine</h3>
+                            <p>
+                                <code>RoundState</code> gains a <code>status</code>.
+                                <code>tickRound</code> evaluates the deadline and the KO rule;
+                                <code>roundResult</code> is the read side that names a winner;
+                                <code>startingHp</code> does the carry arithmetic and
+                                <code>resolveMatch</code> folds three rounds into an outcome. SPEC
+                                §2.7 gains the sentence that decides rounds 1–2 on a 0-HP player.
+                                Pure, deterministic, fully unit-tested — nothing renders yet.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">packages/game/src/engine.ts</span>
+                                <span class="tag">packages/game/src/types.ts</span>
+                                <span class="tag">packages/game/test/match.test.ts</span>
+                                <span class="tag">SPEC.md</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Slice 2</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>The match machine</h3>
+                            <p>
+                                A pure reducer over the phase sequence from
+                                <code>Flow.dc.html</code> — arena → trigger → debate → intermission
+                                → roast → intermission → fight → results — plus the hook that owns
+                                the clock: one <code>setTimeout</code> per round boundary, and
+                                <code>tickRound</code> called on every keystroke. Intermission is a
+                                pass-through beat for now; #8 fills it.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">apps/web/src/match/machine.ts</span>
+                                <span class="tag">apps/web/src/match/use-match.ts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Slice 3</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Split-screen layout</h3>
+                            <p>
+                                The HUD from <code>Main.dc.html</code>: you top-left, opponent
+                                top-right mirrored, round name and countdown down the centre in
+                                momentum yellow. <code>TypingStage</code> sheds its own HP header
+                                and becomes purely the round surface. First slice you can look at.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">apps/web/src/components/match-hud.tsx</span>
+                                <span class="tag">fighter-bar.tsx</span>
+                                <span class="tag">typing-stage.tsx</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Slice 4</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Dealing follows the impact beat</h3>
+                            <p>
+                                <code>IMPACT_BEAT_MS</code> joins the tunables; the deal fires that
+                                long after <code>line.resolved</code> rather than on enter. Enter and
+                                esc stop dealing. The 200ms recoil from
+                                <code>Impact.dc.html</code> is what the number is derived from.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">packages/game/src/tuning.ts</span>
+                                <span class="tag">apps/web/src/match/use-match.ts</span>
+                                <span class="tag">apps/web/src/dev/flags.ts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="milestone upcoming">
+                        <div class="when">Slice 5</div>
+                        <div class="rail"><div class="dot"></div></div>
+                        <div class="body">
+                            <h3>Trigger round, end card, hand-check</h3>
+                            <p>
+                                Round 0 as a quick-draw single word with its own surface, and a
+                                minimal end card naming the winner so the match has somewhere to
+                                land (#9 replaces it with the real results screen). Then walk a full
+                                match at <code>?round=0</code> start to finish.
+                            </p>
+                            <div class="tags">
+                                <span class="tag">trigger-round.tsx</span>
+                                <span class="tag">match-end.tsx</span>
+                                <span class="tag">apps/web/src/app/page.tsx</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─────────────────────────────────────────────── -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">02</span>
+                    <h2>Data flow</h2>
+                </div>
+                <p>
+                    Two ways a round can end, converging on one function. The keystroke path runs
+                    left to right along the top; the boundary path is the dashed edge — the single
+                    <code>setTimeout</code> §4.6 permits, and the only timer in the system.
+                </p>
+
+                <div class="flow">
+                    <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" aria-label="Match flow data diagram">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#1a2e1f" />
+                            </marker>
+                        </defs>
+
+                        <!-- row 1 -->
+                        <rect class="node" x="40" y="40" width="170" height="58" />
+                        <text class="node-label" x="125" y="66" text-anchor="middle">&lt;MatchStage/&gt;</text>
+                        <text class="node-sub" x="125" y="82" text-anchor="middle">apps/web</text>
+
+                        <rect class="node" x="290" y="40" width="170" height="58" />
+                        <text class="node-label" x="375" y="66" text-anchor="middle">applyKeystroke</text>
+                        <text class="node-sub" x="375" y="82" text-anchor="middle">packages/game</text>
+
+                        <rect class="node" x="520" y="40" width="170" height="58" />
+                        <text class="node-label" x="605" y="66" text-anchor="middle">resolveLine</text>
+                        <text class="node-sub" x="605" y="82" text-anchor="middle">packages/game</text>
+
+                        <!-- row 2 -->
+                        <rect class="node-new" x="520" y="150" width="170" height="58" />
+                        <text class="node-label" x="605" y="176" text-anchor="middle">tickRound</text>
+                        <text class="node-sub" x="605" y="192" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="290" y="150" width="170" height="58" />
+                        <text class="node-label" x="375" y="176" text-anchor="middle">roundResult</text>
+                        <text class="node-sub" x="375" y="192" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="40" y="150" width="170" height="58" />
+                        <text class="node-label" x="125" y="176" text-anchor="middle">useMatch</text>
+                        <text class="node-sub" x="125" y="192" text-anchor="middle">apps/web</text>
+
+                        <!-- row 3 -->
+                        <rect class="node-new" x="40" y="270" width="170" height="58" />
+                        <text class="node-label" x="125" y="296" text-anchor="middle">startingHp</text>
+                        <text class="node-sub" x="125" y="312" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="290" y="270" width="170" height="58" />
+                        <text class="node-label" x="375" y="296" text-anchor="middle">resolveMatch</text>
+                        <text class="node-sub" x="375" y="312" text-anchor="middle">packages/game</text>
+
+                        <rect class="node-new" x="520" y="270" width="170" height="58" />
+                        <text class="node-label" x="605" y="296" text-anchor="middle">&lt;MatchEnd/&gt;</text>
+                        <text class="node-sub" x="605" y="312" text-anchor="middle">apps/web</text>
+
+                        <!-- edges -->
+                        <path class="stroke-solid" d="M210 69 L290 69" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="250" y="61" text-anchor="middle">keystroke</text>
+
+                        <path class="stroke-solid" d="M460 69 L520 69" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="490" y="61" text-anchor="middle">complete</text>
+
+                        <path class="stroke-solid" d="M605 98 L605 150" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="613" y="128">damage</text>
+
+                        <path class="stroke-solid" d="M520 179 L460 179" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="490" y="171" text-anchor="middle">over</text>
+
+                        <path class="stroke-solid" d="M290 179 L210 179" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="250" y="171" text-anchor="middle">RoundResult</text>
+
+                        <path class="stroke-solid" d="M85 208 L85 270" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="93" y="242">rounds 1–2</text>
+
+                        <path class="stroke-solid" d="M170 208 L170 250 L375 250 L375 270" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="290" y="244" text-anchor="middle">after round 3</text>
+
+                        <path class="stroke-solid" d="M460 299 L520 299" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="490" y="291" text-anchor="middle">outcome</text>
+
+                        <path class="stroke-solid" d="M40 299 L16 299 L16 69 L40 69" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="48" y="122">next round · +10</text>
+
+                        <path class="stroke-dash" d="M210 195 L240 195 L240 232 L605 232 L605 208" marker-end="url(#arrow)" />
+                        <text class="edge-label" x="420" y="226" text-anchor="middle">one setTimeout per boundary</text>
+                    </svg>
+                </div>
+                <div class="legend">
+                    Solid = request/response. Dashed = async / fire-and-forget. Terracotta border =
+                    new module. Note the absence of any repeating edge into
+                    <code>tickRound</code>: it is called on keystrokes and once at the boundary,
+                    never on an interval.
+                </div>
+            </section>
+
+            <!-- ─────────────────────────────────────────────── -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">03</span>
+                    <h2>Mockups</h2>
+                </div>
+                <p>
+                    Lo-fi renderings of the two surfaces this issue adds, in the committed palette.
+                    Layout follows <code>Main.dc.html</code> exactly — this is not a new design.
+                </p>
+
+                <div class="mock">
+                    <h3>A · Fight screen — the HUD is what's new</h3>
+                    <div class="screen">
+                        <div class="hud">
+                            <div class="hpwrap">
+                                <div class="hprow">
+                                    <span style="color:#56b4e9">YOU</span><span style="color:#56b4e9">86</span>
+                                </div>
+                                <div class="hpbar"><div style="width:86%;background:#56b4e9"></div></div>
+                                <div class="mo"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+                            </div>
+                            <div style="text-align:center">
+                                <div class="dim" style="letter-spacing:0.3em">ROUND 3</div>
+                                <div style="font-weight:700;letter-spacing:0.2em;margin:2px 0">THE FIGHT</div>
+                                <div style="font-size:22px;font-weight:700;color:#f0e442">0:47</div>
+                            </div>
+                            <div class="hpwrap">
+                                <div class="hprow" style="flex-direction:row-reverse">
+                                    <span style="color:#e69f00">GHOST</span><span style="color:#e69f00">41</span>
+                                </div>
+                                <div class="hpbar" style="flex-direction:row-reverse"><div style="width:41%;background:#e69f00"></div></div>
+                                <div class="mo" style="flex-direction:row-reverse"><i class="on"></i><i></i><i></i><i></i></div>
+                            </div>
+                        </div>
+
+                        <div class="stage">STAGE · FIGURES · IMPACT BURST</div>
+
+                        <div class="panel">
+                            <div class="dim" style="letter-spacing:0.24em;margin-bottom:6px">HAYMAKER · 28 WORDS</div>
+                            <div style="font-size:13px;line-height:1.6">
+                                you had time to react to a reel, time to send a
+                                <span style="color:#d55e00;border-bottom:2px solid #d55e00">pl</span><span
+                                    style="border-left:2px solid #f0e442;margin-left:1px"></span><span class="dim"
+                                    >about brunch, and somehow not four seconds…</span
+                                >
+                            </div>
+                        </div>
+
+                        <div class="opts">
+                            <div class="opt"><span class="dim">JAB · 6</span></div>
+                            <div class="opt"><span class="dim">COMBO · 13</span></div>
+                            <div class="opt locked">
+                                <span style="color:#56b4e9">HAYMAKER · LOCKED IN</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mock-note">
+                        New in this issue: the three-column HUD, the mirrored opponent bar, and the
+                        centre countdown. Stage, typing panel and option cards already exist.
+                    </div>
+                </div>
+
+                <div class="mock">
+                    <h3>B · Round 0 — the trigger</h3>
+                    <div class="screen">
+                        <div style="text-align:center;padding:18px 0">
+                            <div class="dim" style="letter-spacing:0.3em">ROUND 0 · THE TRIGGER</div>
+                            <div class="dim" style="margin:14px 0;font-size:10px;letter-spacing:0.18em">
+                                — provocation line pending #11 —
+                            </div>
+                            <div style="font-size:34px;font-weight:700;letter-spacing:0.1em;margin:10px 0">
+                                WHAT
+                            </div>
+                            <div style="color:#f0e442;font-weight:700">0:02</div>
+                            <div class="dim" style="margin-top:12px;font-size:10px">
+                                FIRST TO TYPE IT TAKES +5 HP INTO THE DEBATE
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mock-note">
+                        No option cards — §2.2 is a quick-draw, one word, no choice. The provocation
+                        slot is laid out but empty: the pool has the word and not the setup, and
+                        inventing the text would break invariant 3.
+                    </div>
+                </div>
+
+                <div class="mock">
+                    <h3>C · Between rounds</h3>
+                    <div class="screen">
+                        <div style="text-align:center;padding:22px 0">
+                            <div style="font-size:16px;font-weight:700;letter-spacing:0.16em">
+                                <span style="color:#56b4e9">YOU</span> TAKE THE DEBATE
+                            </div>
+                            <div class="dim" style="margin-top:8px">86 — 41 · +10 HP INTO THE FIGHT</div>
+                        </div>
+                    </div>
+                    <div class="mock-note">
+                        The intermission beat, held for its 10s. #8 replaces the centre with the
+                        taunt exchange; the HP arithmetic line stays.
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─────────────────────────────────────────────── -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">04</span>
+                    <h2>Files</h2>
+                </div>
+                <p>Six added, nine updated, none removed.</p>
+
+                <div class="files">
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">apps/web/src/match/machine.ts</span>
+                            <span class="file-note"
+                                >Pure phase reducer — the sequence from <code>Flow.dc.html</code>, plus
+                                which phases carry a round and which are beats. No React, so it is
+                                unit-testable and moves to the server at #13 unchanged.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">apps/web/src/match/use-match.ts</span>
+                            <span class="file-note"
+                                >The hook that owns wall-clock time: the round-start base, the single
+                                boundary <code>setTimeout</code>, the deal scheduled after the impact
+                                beat, and the keystroke entry point. Everything impure lives here.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/match-hud.tsx</span>
+                            <span class="file-note"
+                                >The three-column HUD: both fighter bars and the centre round name
+                                and countdown. Owns the 100ms display interval, which is rendering,
+                                not game logic.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/trigger-round.tsx</span>
+                            <span class="file-note"
+                                >Round 0's surface. One word, no option cards, its own 2s deadline.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/match-end.tsx</span>
+                            <span class="file-note"
+                                >Minimal end card so the match lands somewhere. Deliberately plain —
+                                #9 is the results screen and will replace this whole file.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-add">add</span>
+                        <span>
+                            <span class="file-path">packages/game/test/match.test.ts</span>
+                            <span class="file-note"
+                                >The carry table from §2.7 as a case each, the KO rule in every
+                                round, deadline expiry, and the HP tie.</span
+                            >
+                        </span>
+                    </div>
+
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">packages/game/src/engine.ts</span>
+                            <span class="file-note"
+                                >The two stubs become real, joined by <code>roundResult</code> and
+                                <code>startingHp</code>.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">packages/game/src/types.ts</span>
+                            <span class="file-note"
+                                ><code>RoundStatus</code>, and <code>RoundState.status</code> to carry
+                                it. <code>RoundResult</code> and <code>MatchOutcome</code> already
+                                exist and do not change shape.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">packages/game/src/tuning.ts</span>
+                            <span class="file-note"
+                                ><code>IMPACT_BEAT_MS</code> joins the constants, and the HP pool
+                                and carry values join the <code>Tuning</code> object — every number
+                                §2.7 depends on has to be panel-drivable, not module-constant.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/typing-stage.tsx</span>
+                            <span class="file-note"
+                                >Sheds <code>newRound</code>, the enter/esc deal handlers and its own
+                                fighter bars. Becomes the round surface only, driven by props.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">apps/web/src/components/fighter-bar.tsx</span>
+                            <span class="file-note"
+                                >Gains the mirrored right-hand variant — bar fills inward from the
+                                right, momentum pips reverse, name and number swap.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">apps/web/src/app/page.tsx</span>
+                            <span class="file-note"
+                                >Renders the match rather than a single round.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">apps/web/src/dev/flags.ts</span>
+                            <span class="file-note"
+                                ><code>?round=</code> now seeds the phase the match starts at rather
+                                than pinning it forever; the doc comment says so.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">SPEC.md</span>
+                            <span class="file-note"
+                                >§2.7 gains the 0-HP rule for rounds 1–2 and the tie rule. §4.2 gains
+                                <code>roundResult</code> and <code>startingHp</code>.</span
+                            >
+                        </span>
+                    </div>
+                    <div class="file-row">
+                        <span class="file-op op-mod">update</span>
+                        <span>
+                            <span class="file-path">CLAUDE.md</span>
+                            <span class="file-note"
+                                >"two stubs that still throw" is no longer true; next task becomes
+                                #6 or #7.</span
+                            >
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─────────────────────────────────────────────── -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">05</span>
+                    <h2>Key code</h2>
+                </div>
+                <p>
+                    The three places this is easy to get wrong: the end condition, the carry
+                    arithmetic, and the timer that must not become a loop.
+                </p>
+
+                <div class="code-caption">packages/game/src/engine.ts — the end condition</div>
+                <pre class="code">
+/**
+ * Has the round ended? SPEC §4.6 — deadline-based, called on keystrokes and
+ * once at the boundary. This is not a loop and must never become one.
+ *
+ * Two ways to end. The deadline is the ordinary one. A player at 0 HP is the
+ * other, and it applies in EVERY round, not only round 3: HP never rises, so
+ * once someone reaches 0 the round's winner is arithmetically fixed and the
+ * remaining seconds cannot change it. Round 3 differs only in what happens
+ * next — it ends the match rather than the round (SPEC §2.7).
+ *
+ * Returns the argument unchanged while the round is live, so the caller can
+ * skip a render.
+ */
+export function tickRound(state: RoundState, now: number): RoundState {
+  if (state.status === "over") return state;
+
+  const expired = now >= state.endsAt;
+  const knockout = state.players.some((p) => p.hp <= 0);
+  if (!expired && !knockout) return state;
+
+  return { ...state, status: "over" };
+}
+
+/** Null while the round is live. Equal HP is a draw — neither player carries. */
+export function roundResult(state: RoundState): RoundResult | null {
+  if (state.status !== "over") return null;
+
+  const [you, them] = state.players;
+  const winner: PlayerSlot | null = you.hp === them.hp ? null : you.hp > them.hp ? 0 : 1;
+  return { round: state.round, hp: [you.hp, them.hp], winner };
+}</pre
+                >
+
+                <div class="code-caption">packages/game/src/engine.ts — the carry</div>
+                <pre class="code">
+/**
+ * What a player starts a round with. SPEC §2.7.
+ *
+ * Only round 3 carries anything: rounds 1 and 2 each open at the base pool,
+ * which is the whole point of them not being a best-of-three. The trigger is
+ * worth deliberately less than a round (§2.2) — it sets the topic, it does not
+ * swing the match.
+ */
+export function startingHp(
+  rounds: readonly RoundResult[],
+  slot: PlayerSlot,
+  tuning: Tuning = DEFAULT_TUNING,
+): number {
+  const won = (name: RoundName) =>
+    rounds.find((r) => r.round === name)?.winner === slot;
+
+  const trigger = won("trigger") ? tuning.triggerWinHpBonus : 0;
+  const carried = (["debate", "roast"] as const)
+    .filter(won)
+    .length * tuning.roundWinHpBonus;
+
+  return tuning.roundBaseHp + trigger + carried;
+}
+
+/** Round 3 is the decider; the earlier rounds already paid out as HP. */
+export function resolveMatch(rounds: RoundResult[]): MatchOutcome {
+  const fight = rounds.find((r) => r.round === "fight");
+  return { winner: fight?.winner ?? null, rounds };
+}</pre
+                >
+
+                <div class="code-caption">apps/web/src/match/use-match.ts — one timer, and a countdown that isn't one</div>
+                <pre class="code">
+// The ONLY timer in the game (SPEC §4.6). It is a backstop: a round with a
+// player still typing ends on their keystroke, because every keystroke runs
+// tickRound. This fires for the round nobody finishes.
+useEffect(() => {
+  if (round.status === "over") return;
+  const remaining = round.endsAt - (performance.now() - startedAt.current);
+  const id = window.setTimeout(() => {
+    setRound((current) => tickRound(current, current.endsAt));
+  }, Math.max(0, remaining));
+  return () => window.clearTimeout(id);
+}, [round.round, round.status]);
+
+// The countdown in the HUD is a RENDER, not a tick — it reads the clock and
+// paints a number, and never touches game state. §4.6 explicitly puts the
+// countdown on the client for exactly this reason.
+//   ↳ lives in match-hud.tsx, 100ms interval, same rate as §4.3's snapshots.</pre
+                >
+            </section>
+
+            <!-- ─────────────────────────────────────────────── -->
+            <section>
+                <div class="section-head">
+                    <span class="section-num">06</span>
+                    <h2>Future scope &amp; assumptions</h2>
+                </div>
+                <p>
+                    Four decisions this plan makes on your behalf, and three things it deliberately
+                    leaves alone.
+                </p>
+
+                <div class="future-item">
+                    <h3>A 0-HP player ends rounds 1 and 2 too — is that right?</h3>
+                    <p>
+                        This is the decision the issue asks for, and the plan takes the position that
+                        a knockout ends any round. HP is monotonically non-increasing and the round
+                        carry is binary (+10 or nothing, not HP-proportional), so once a player
+                        reaches 0 nothing that happens in the remaining seconds can change the round
+                        result — running the clock out is dead time with a decided outcome on screen.
+                        §2.7 stays true as written, because a player at 0 necessarily has less HP at
+                        the end. What changes is only that "the end" can arrive early.
+                    </p>
+                    <p>
+                        The alternative — clamp at 0 and play the round out — keeps the round
+                        durations fixed and gives the losing player something to do, which matters
+                        more once #7's ghost is applying real pressure. It is one condition in
+                        <code>tickRound</code> either way, so it stays cheap to reverse.
+                    </p>
+                    <div class="meta">Decide with · you, at plan review · reversible in slice 1</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Does momentum carry across rounds?</h3>
+                    <p>
+                        The spec does not say. The plan assumes <strong>no</strong> — a fresh HP pool
+                        gets a fresh meter, and a Special banked in the debate does not fire in the
+                        fight. Carrying it would make round 3 open with an instant haymaker for
+                        whoever ended round 2 hot, which cuts against §2.7's intent that the fight is
+                        where the match is decided. Written into §2.7 alongside the 0-HP rule.
+                    </p>
+                    <div class="meta">Assumption · revisit at #12's tuning pass</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Rounds 2 and 3 will serve debate lines</h3>
+                    <p>
+                        The pool holds one trigger line and six debate lines; roast and fight are
+                        unwritten. <code>dealThree</code>'s <code>candidates()</code> already widens
+                        when a round runs dry, so a full match walks end to end today — it just reads
+                        as the same six lines three times. That is #11's job and this issue does not
+                        touch <code>pool/</code>: authoring roast and fight lines here would put
+                        content review inside a flow PR, and the demo does not need it.
+                    </p>
+                    <div class="meta">Deferred to · #11 · content pipeline</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>The trigger has no provocation text</h3>
+                    <p>
+                        §2.2 wants a provocation ("dev_p has left you on read for 4 hours") and then
+                        the word. The pool has the word and not the setup, and the schema has no
+                        field for arena-level framing. The layout reserves the slot and leaves it
+                        empty rather than inventing a line, which invariant 3 forbids. #11 adds
+                        either an arena metadata file or a <code>provocation</code> round.
+                    </p>
+                    <div class="meta">Deferred to · #11</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Intermission is a beat, not a screen</h3>
+                    <p>
+                        The phase exists in the machine and holds for its 10 seconds showing the
+                        round result, because the machine is much harder to retrofit than the screen
+                        is. The taunt exchange itself is #8 and this issue renders nothing for it.
+                    </p>
+                    <div class="meta">Deferred to · #8 · intermission and taunt exchange</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>Solo means the opponent never attacks</h3>
+                    <p>
+                        Until #7 there is no ghost, so the opponent's HP only moves when you land a
+                        line and you will win every round you do not self-damage your way out of.
+                        This is enough to exercise every branch except "you lose", which the tests
+                        cover directly. Worth saying out loud so the hand-check is not mistaken for a
+                        balance verdict — §9's open question stays open.
+                    </p>
+                    <div class="meta">Verdict after · #7 and #11</div>
+                </div>
+
+                <div class="future-item">
+                    <h3>The phase machine lives in apps/web, not packages/game</h3>
+                    <p>
+                        Round <em>rules</em> — the carry, the winner, the end condition — go in the
+                        engine where both ends will share them. The phase <em>sequence</em> and its
+                        timers go in <code>apps/web/src/match/</code>, because at Milestone 3 the
+                        server owns the sequence (#13, room lifecycle) and the client becomes a
+                        renderer of it. Keeping the reducer pure and React-free means #13 moves the
+                        file rather than rewriting it.
+                    </p>
+                    <div class="meta">Revisit at · #13 · server room lifecycle</div>
+                </div>
+            </section>
+        </div>
+    </body>
+</html>
