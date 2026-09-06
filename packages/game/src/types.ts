@@ -63,10 +63,18 @@ export interface PlayerState {
   seenLineIds: string[];
 }
 
+/**
+ * Whether the round is still being played. SPEC §2.7 — `tickRound` is the only
+ * thing that moves it to "over", and nothing moves it back.
+ */
+export type RoundStatus = "live" | "over";
+
 export interface RoundState {
   round: RoundName;
   /** ms since round start at which the round ends */
   endsAt: number;
+  /** "over" once the deadline passed or a player reached 0 HP. SPEC §2.7. */
+  status: RoundStatus;
   players: [PlayerState, PlayerState];
   /** seeded PRNG cursor — advanced only through pure helpers */
   rngCursor: number;
@@ -85,6 +93,7 @@ export interface LineOutcome {
 export interface RoundResult {
   round: RoundName;
   hp: [number, number];
+  /** null on equal HP — a draw carries nothing. SPEC §2.7. */
   winner: PlayerSlot | null;
 }
 

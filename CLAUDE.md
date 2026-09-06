@@ -22,17 +22,24 @@ lock-in, `lockIn` and `dealOptions` in the engine, `dealThree` in
 `docs/issue-4-handoff.md`, and `docs/plan/three-line-choice.html` for the plan it
 was built from.
 
-**The next coding task is [#5 — the full match flow](https://github.com/ananthanandanan/TypeFeud/issues/5)**:
-`tickRound` and `resolveMatch`, deadline-based against `endsAt` with **no tick
-loop** (SPEC §4.6); rounds 1–2 holding their own 100 HP pools, winners carrying +10
-into round 3; the split-screen layout with HP bars and round timers (SPEC §6.1).
-Done when a full trigger → debate → roast → fight match runs start to finish solo.
+**#5 is done** — the full match runs arena → trigger → debate → intermission →
+roast → intermission → fight → results. `tickRound`, `roundResult`, `startingHp`
+and `resolveMatch` are implemented and `packages/game` has no stubs left. The
+match sequence is `apps/web/src/match/machine.ts` (pure, React-free, ready for
+#13 to move server-side) and the clock is `use-match.ts`. See
+`docs/issue-5-handoff.md`.
 
-Two things #4 left for it. It will want the enter key, which currently deals the
-next three lines — dealing should follow the impact beat once there is a round
-clock to hang it on. And **HP reaching 0 currently does nothing**, which is correct
-for now: SPEC §2.7 ends only round 3 on KO, and what rounds 1–2 should do with a
-0-HP player is a decision #5 has to make and write into the spec.
+It moved the spec three times, all written down: §2.7 gained the 0-HP rule for
+rounds 1–2 (a knockout ends **any** round, because HP never rises and the carry is
+binary) plus the draw and momentum rules; §2.2 gained the trigger's quick-draw end
+condition; §4.2 gained `roundResult` and `startingHp`.
+
+**The next coding task is [#7 — the scripted ghost opponent](https://github.com/ananthanandanan/TypeFeud/issues/7)
+or [#6 — seeded selection](https://github.com/ananthanandanan/TypeFeud/issues/6).**
+#7 is the one that makes the game a contest: solo, the opponent never attacks, so
+every round is won by default and SPEC §9's open question — does anyone ever pick
+anything but the safe line? — still cannot be answered. #6 deletes the hydration
+workaround in `use-match.ts`.
 
 **#1 (CI and repo-wide linting) is still open and unblocked** — `pnpm test &&
 pnpm typecheck && pnpm build` as a GitHub Actions job body. Worth doing early so the
@@ -98,9 +105,9 @@ all tsconfigs `noEmit`). There is no build step for them — do not add one; it
 exists to keep Milestone 1–3 iteration fast.
 
 `packages/game/src/engine.ts` exports `applyKeystroke`, `lockIn`, `dealOptions`,
-`resolveLine` and `triggerSpecial` (all implemented) plus two stubs that still throw
-`not implemented` — `tickRound` and `resolveMatch`, both #5. That is intentional:
-the signatures were fixed first because both apps code against them.
+`resolveLine`, `triggerSpecial`, `tickRound`, `roundResult`, `startingHp` and
+`resolveMatch` — all implemented, no stubs left. The signatures were fixed before
+the bodies because both apps code against them.
 
 `resolveLine` is the exception that proves it. Its declared signature could not
 survive contact and is now
@@ -158,8 +165,10 @@ Breaking one of these is a design change, not a refactor. From SPEC §11:
 - Dev shortcuts (SPEC §7.2) live in `apps/web/src/dev/flags.ts`: `?bot=1`,
   `?round=0..3`, `?tier=jab|combo|haymaker` (deals all three options from one tier,
   for testing it in isolation — unset in normal play), `?tuning=1`. Backtick toggles
-  the tuning panel, tab arms the Special when the meter is full, enter deals three
-  new lines, esc re-deals the same three.
+  the tuning panel and tab arms the Special when the meter is full. `?round=` now
+  seeds where the match *opens* rather than pinning it — `?round=2` still ends at
+  the fight. Enter and esc no longer deal: #5 gave that to the round clock, and the
+  next three arrive `impactBeatMs` after the line lands.
 - Content line ids are `<arena-without-underscores>-<round>-<tier>-<nnn>`, e.g.
   `groupchat-debate-haymaker-001`. SPEC §3.3 sketches an abbreviated form; the
   validator standardises on the unabbreviated one.

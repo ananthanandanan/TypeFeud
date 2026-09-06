@@ -62,6 +62,8 @@ A single provocation line appears (`dev_p has left you on read for 4 hours`), th
 
 First to type it correctly wins the trigger. Reward: **+5 HP in Round 1.** Deliberately small — this is a pacing beat and a topic-setter, not a swing.
 
+Completing the word **ends the round immediately** — that is what "first" means, and it is a third end condition alongside the deadline and the knockout (§2.7). If neither player types it inside the 2s, nobody takes the trigger and nobody carries the bonus. Damage dealt during the trigger is discarded with the round's HP pool; only who finished first is carried.
+
 ### 2.3 The three-line choice (core mechanic)
 
 During rounds 1–3, each player sees **three simultaneous options** at all times:
@@ -138,6 +140,10 @@ Rounds 1 and 2 do **not** end the match. Each has its own 100 HP pools; the play
 **Round winners carry +10 starting HP into Round 3** (max +20 combined, plus trigger bonus).
 
 Round 3 is the decider: 100 HP base + carried advantage, ends on KO or timer. Timer expiry → higher HP wins.
+
+**A player reaching 0 HP ends any round, not only Round 3.** HP never rises and the carry is binary (+10 or nothing, not HP-proportional), so the moment a player hits 0 the round's winner is arithmetically fixed and the seconds still on the clock cannot change it. Rounds 1 and 2 therefore end early on a knockout and advance to the next round; only Round 3's knockout ends the *match*. **Equal HP at the timer is a draw and carries nothing to either player.**
+
+**Momentum does not carry between rounds.** A fresh HP pool gets a fresh meter, and a Special banked at the end of the Roast does not fire in the Fight — opening the decider with a free haymaker cuts against the point of the round being where the match is decided.
 
 **Rationale:** a best-of-three would let a player clinch after Round 2, meaning the fight — the climax the whole escalation builds toward — sometimes never happens or doesn't matter. Feeding earlier rounds into the fight as advantage guarantees the arc always resolves where it should.
 
@@ -260,6 +266,8 @@ dealOptions(state: RoundState, slot: PlayerSlot, options: [Line, Line, Line]): R
 resolveLine(state: RoundState, at: ResolveInput, tuning?: Tuning): LineResolution
 triggerSpecial(state: RoundState, slot?: PlayerSlot, tuning?: Tuning): RoundState
 tickRound(state: RoundState, now: number): RoundState
+roundResult(state: RoundState): RoundResult | null
+startingHp(round: RoundName, rounds: readonly RoundResult[], slot: PlayerSlot, tuning?: Tuning): number
 resolveMatch(rounds: RoundResult[]): MatchOutcome
 ```
 
@@ -281,6 +289,13 @@ this package's business, because it may not know the content pool exists.
 line stays on screen through the impact beat. `dealOptions` is what ends it, and the
 caller **must resolve each completed line exactly once** — nothing in the state
 records that resolution already ran.
+
+`tickRound` is the round's end condition and nothing else: it moves `RoundState.status`
+to `over` and never back. `roundResult` is its read side — null while the round is live
+— in the same spirit as `progress.ts` reading `LineProgress`. `startingHp` takes the
+round it is opening because only round 3 carries anything; the earlier rounds always
+open at the base pool. All three are pure, so the round's outcome is as replayable as
+its keystrokes.
 
 **Why this matters:** it makes it structurally impossible for client and server to disagree about what a haymaker is worth. It eliminates the entire bug class where the loser's screen says they won. It also makes the game logic unit-testable with no browser and no socket — which is where the majority of your tests should live.
 

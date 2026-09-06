@@ -10,13 +10,14 @@ import type {
   MatchOutcome,
   PlayerSlot,
   PlayerState,
+  RoundName,
   RoundResult,
   RoundState,
 } from "./types";
 
 /**
- * The four entry points from SPEC §4.2. Imported by BOTH client and server so
- * they can never disagree about what a haymaker is worth.
+ * The entry points from SPEC §4.2. Imported by BOTH client and server so they
+ * can never disagree about what a haymaker is worth.
  *
  * Invariants for every implementation in this file:
  *   - pure: no I/O, no DOM, no network
@@ -268,10 +269,104 @@ export function triggerSpecial(
   return { ...state, players };
 }
 
-export function tickRound(_state: RoundState, _now: number): RoundState {
-  throw new Error("not implemented — Milestone 2");
+/**
+ * Has the round ended? SPEC §4.6 — deadline-based, called on every keystroke
+ * and once at the round boundary. This is not a loop and must never become one
+ * (invariant 8).
+ *
+ * Two ways to end. The deadline is the ordinary one. A player at 0 HP is the
+ * other, and it applies in EVERY round rather than only round 3: HP never
+ * rises and the carry is binary, so the moment someone reaches 0 the round's
+ * winner is arithmetically fixed and the remaining seconds cannot change it.
+ * Round 3 differs only in what happens next — it ends the match rather than the
+ * round (SPEC §2.7).
+ *
+ * A no-op (returning the argument unchanged) while the round is still live or
+ * already over, so the caller can skip a render.
+ */
+export function tickRound(state: RoundState, now: number): RoundState {
+  if (state.status === "over") return state;
+
+  const expired = now >= state.endsAt;
+  const knockout = state.players.some((player) => player.hp <= 0);
+  // SPEC §2.2 — the trigger is a quick-draw: first to type the word correctly
+  // takes it, so a completed line ends it rather than the clock running out.
+  const quickDraw = state.round === "trigger" && state.players.some(hasCompletedLine);
+  if (!expired && !knockout && !quickDraw) return state;
+
+  return { ...state, status: "over" };
 }
 
-export function resolveMatch(_rounds: RoundResult[]): MatchOutcome {
-  throw new Error("not implemented — Milestone 2");
+function hasCompletedLine(player: PlayerState): boolean {
+  const line = activeLine(player);
+  return line !== null && player.progress !== null && isLineComplete(line.text, player.progress);
+}
+
+/**
+ * Who won the round, once it is over. SPEC §2.7 — more HP remaining takes it.
+ *
+ * The read side of `tickRound`, in the same spirit as `progress.ts` being the
+ * read side of `LineProgress`: null while the round is live, so a caller can
+ * poll it without first asking whether the round has ended. Equal HP is a draw
+ * and carries nothing to either player.
+ */
+export function roundResult(state: RoundState): RoundResult | null {
+  if (state.status !== "over") return null;
+
+  const [you, them] = state.players;
+  return { round: state.round, hp: [you.hp, them.hp], winner: winnerOf(state) };
+}
+
+function winnerOf(state: RoundState): PlayerSlot | null {
+  const [you, them] = state.players;
+
+  // SPEC §2.2 — the trigger is won by finishing the word, not by out-damaging.
+  // Reading it from progress rather than HP is what makes the result the same
+  // whether the caller resolved the completing line before ticking or after:
+  // the quick-draw closes the round on that keystroke, and a winner derived
+  // from HP would depend on whether the damage had landed yet.
+  if (state.round === "trigger") {
+    const first = hasCompletedLine(you);
+    const second = hasCompletedLine(them);
+    return first === second ? null : first ? 0 : 1;
+  }
+
+  return you.hp === them.hp ? null : you.hp > them.hp ? 0 : 1;
+}
+
+/**
+ * What a player starts a round with. SPEC §2.7.
+ *
+ * Only round 3 carries anything. Rounds 1 and 2 each open at the base pool,
+ * which is the whole point of them not being a best-of-three: a player cannot
+ * clinch before the fight, they can only walk into it ahead. The trigger is
+ * worth deliberately less than a round (SPEC §2.2) — it sets the topic, it does
+ * not swing the match.
+ */
+export function startingHp(
+  round: RoundName,
+  rounds: readonly RoundResult[],
+  slot: PlayerSlot,
+  tuning: Tuning = DEFAULT_TUNING,
+): number {
+  if (round !== "fight") return tuning.roundBaseHp;
+
+  const won = (name: RoundName) => rounds.find((result) => result.round === name)?.winner === slot;
+  const trigger = won("trigger") ? tuning.triggerWinHpBonus : 0;
+  const carried = (["debate", "roast"] as const).filter(won).length * tuning.roundWinHpBonus;
+
+  return tuning.roundBaseHp + trigger + carried;
+}
+
+/**
+ * Fold the rounds into a match. SPEC §2.7.
+ *
+ * Round 3 is the decider and the only round that names the winner — the
+ * earlier rounds have already paid out, as the HP round 3 opened with. A fight
+ * that ends level is a draw, and a match whose fight never happened has no
+ * winner rather than a defaulted one.
+ */
+export function resolveMatch(rounds: RoundResult[]): MatchOutcome {
+  const fight = rounds.find((result) => result.round === "fight");
+  return { winner: fight?.winner ?? null, rounds };
 }

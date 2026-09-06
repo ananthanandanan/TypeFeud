@@ -53,6 +53,14 @@ export const ROUND_DURATION_MS = {
 export const INTERMISSION_DURATION_MS = 10_000;
 export const ARENA_REVEAL_MS = 3_000;
 
+/**
+ * How long the finished line stays on screen before the next three are dealt.
+ * SPEC §6.3, and the impact beat on the design canvas: contact is one frame at
+ * `line.resolved`, recoil runs +200ms, and the rest is hold so the damage
+ * number can be read. Deal any sooner and the burst is cut off mid-recoil.
+ */
+export const IMPACT_BEAT_MS = 320;
+
 /** Sabotage — Round 3 only. SPEC §2.8. */
 export const SABOTAGE_DURATION_MS = 1_500;
 export const SABOTAGE_COOLDOWN_MS = 8_000;
@@ -76,6 +84,10 @@ export interface Tuning {
   speedMultMax: number;
   specialDamageMult: number;
   momentumChargesForSpecial: number;
+  roundBaseHp: number;
+  roundWinHpBonus: number;
+  triggerWinHpBonus: number;
+  impactBeatMs: number;
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -88,4 +100,8 @@ export const DEFAULT_TUNING: Tuning = {
   speedMultMax: SPEED_MULT_MAX,
   specialDamageMult: SPECIAL_DAMAGE_MULT,
   momentumChargesForSpecial: MOMENTUM_CHARGES_FOR_SPECIAL,
+  roundBaseHp: ROUND_BASE_HP,
+  roundWinHpBonus: ROUND_WIN_HP_BONUS,
+  triggerWinHpBonus: TRIGGER_WIN_HP_BONUS,
+  impactBeatMs: IMPACT_BEAT_MS,
 };

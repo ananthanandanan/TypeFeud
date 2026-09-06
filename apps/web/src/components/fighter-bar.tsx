@@ -13,14 +13,24 @@ import { MOMENTUM_CHARGES_FOR_SPECIAL } from "@typefeud/game";
 export function FighterBar({
   name,
   hp,
+  max = 100,
   momentum,
   specialArmed,
+  showSpecialHint = true,
   side,
 }: {
   name: string;
   hp: number;
+  /**
+   * What a full bar is worth. Round 3 opens above the base pool when a player
+   * carried an advantage (SPEC §2.7), so the bar is scaled rather than clamped
+   * — otherwise the carry is invisible until it has been spent.
+   */
+  max?: number;
   momentum: number;
   specialArmed: boolean;
+  /** false where the keyboard is not live, so the meter never offers a key that does nothing */
+  showSpecialHint?: boolean;
   side: "you" | "opponent";
 }) {
   const mirrored = side === "opponent";
@@ -41,13 +51,14 @@ export function FighterBar({
       >
         <div
           className={`${fill} transition-[width] duration-300 ease-out`}
-          style={{ width: `${Math.max(0, Math.min(100, hp))}%` }}
+          style={{ width: `${Math.max(0, Math.min(100, (hp / max) * 100))}%` }}
         />
       </div>
 
       <MomentumMeter
         momentum={momentum}
         specialArmed={specialArmed}
+        showSpecialHint={showSpecialHint}
         mirrored={mirrored}
       />
     </div>
@@ -61,10 +72,12 @@ export function FighterBar({
 function MomentumMeter({
   momentum,
   specialArmed,
+  showSpecialHint,
   mirrored,
 }: {
   momentum: number;
   specialArmed: boolean;
+  showSpecialHint: boolean;
   mirrored: boolean;
 }) {
   const full = momentum >= MOMENTUM_CHARGES_FOR_SPECIAL;
@@ -84,7 +97,7 @@ function MomentumMeter({
       </div>
       {/* Never hue alone: the meter reads as full from the pips, and the label
           spells out what it unlocked and how to spend it. */}
-      {full || specialArmed ? (
+      {showSpecialHint && (full || specialArmed) ? (
         <span className="text-momentum text-[11px] font-extrabold tracking-[0.18em]">
           {specialArmed ? "SPECIAL ARMED ×1.8" : "SPECIAL · TAB"}
         </span>
