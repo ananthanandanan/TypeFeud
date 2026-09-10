@@ -25,17 +25,29 @@ export const keystrokeSchema = z.object({
 
 export const keystrokeTraceSchema = z.array(keystrokeSchema);
 
+/**
+ * The whole of what one player's in-flight typing tells the other. SPEC §4.3.
+ *
+ * One schema, used by the client's `progress` and the server's
+ * `opponent.progress`, because they are the same payload seen from two ends —
+ * the server relays it, it does not enrich it. Keeping it in one place is what
+ * lets the scripted ghost (#7) and a live socket (#14) feed the identical
+ * shape into `applyProgressSnapshot`.
+ */
+export const progressSnapshotSchema = z.object({
+  lineId: z.string(),
+  charIndex: z.number().int().nonnegative(),
+  errors: z.number().int().nonnegative(),
+});
+
+export type ProgressSnapshot = z.infer<typeof progressSnapshotSchema>;
+
 // ── client → server ─────────────────────────────────────────────────────────
 
 export const clientMessageSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("queue.join"), nickname: z.string().min(1).max(20) }),
   z.object({ t: z.literal("queue.leave") }),
-  z.object({
-    t: z.literal("progress"),
-    lineId: z.string(),
-    charIndex: z.number().int().nonnegative(),
-    errors: z.number().int().nonnegative(),
-  }),
+  progressSnapshotSchema.extend({ t: z.literal("progress") }),
   z.object({
     t: z.literal("line.commit"),
     lineId: z.string(),
@@ -65,12 +77,7 @@ export const serverMessageSchema = z.discriminatedUnion("t", [
     serverTime: z.number(),
     endsAt: z.number(),
   }),
-  z.object({
-    t: z.literal("opponent.progress"),
-    lineId: z.string(),
-    charIndex: z.number().int().nonnegative(),
-    errors: z.number().int().nonnegative(),
-  }),
+  progressSnapshotSchema.extend({ t: z.literal("opponent.progress") }),
   z.object({
     t: z.literal("line.resolved"),
     by: z.enum(["self", "opponent"]),

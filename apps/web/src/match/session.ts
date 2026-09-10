@@ -120,18 +120,24 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
       resolved = driven.resolved;
       if (input.type === "deal" && driven.round.status === "live") {
         if (action.type === "deal") cursors[action.deal.slot] = action.deal.randomState;
-        // An opponent's refresh must not remount the local typing surface.
-        match = input.slot === 0
-          ? matchReducer(match, { type: "line.dealt", round: driven.round })
-          : matchReducer(match, { type: "round.changed", round: driven.round });
+        // Per-slot generation is what keeps an opponent's refresh from
+        // remounting the local typing surface, so both slots take one path.
+        match = matchReducer(match, { type: "line.dealt", round: driven.round, slot: input.slot });
       } else {
+        // A snapshot is the opponent's keystroke: it moves their clock the same
+        // way, and the impact beat after their line is measured from it.
+        const acting = "slot" in input ? input.slot : undefined;
+        const typed = input.type === "key" || input.type === "progress";
         match = matchReducer(match, {
-          type: "round.changed", round: driven.round,
-          at: input.type === "key" && input.slot === 0 &&
-            driven.round.players[0].progress !== match.round.players[0].progress ? roundAt : undefined,
+          type: "round.changed", round: driven.round, slot: acting,
+          at: typed && acting !== undefined &&
+            driven.round.players[acting].progress !== match.round.players[acting].progress
+            ? roundAt : undefined,
         });
-        if (driven.outcome && "slot" in input && input.slot === 0) {
-          match = matchReducer(match, { type: "line.resolved", round: driven.round, outcome: driven.outcome });
+        if (driven.outcome && acting !== undefined) {
+          match = matchReducer(match, {
+            type: "line.resolved", round: driven.round, slot: acting, outcome: driven.outcome,
+          });
         }
       }
       break;

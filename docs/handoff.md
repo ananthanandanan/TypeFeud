@@ -1,182 +1,151 @@
 # Handoff
 
-Task #6 — seeded line selection and replay traces — is implemented, fully
-verified, committed as `200fb5f`, and pushed; it remains unmerged.
+Task #7 — the scripted ghost opponent — is implemented and fully verified on
+`feat/scripted-ghost`. It is not committed yet.
 
-**Branch:** `feat/seeded-selection-replay`
+**Branch:** `feat/scripted-ghost`
 **Last updated:** 2026-09-11
 **Working dir:** `/Users/ananthan2k/Gitrepos/TypeFeud`
 
-## Agenda
+## Where the project is
 
-Task #6 makes line selection reproducible, remembers recently displayed lines,
-and records enough ordered input to recompute a match. This is infrastructure for
-testing, debugging, later replay/clip work, and #7's scripted ghost. It is not a
-user statistics system or a match-history screen.
+**Milestone 1 is done and Milestone 2 is past halfway.** #2, #3, #4 and #5 are
+merged (PRs #15–#18). #6 is committed as `200fb5f` on `feat/seeded-selection-replay`
+and still unmerged. #7 is what this branch adds, and it is the one that turns the
+flow into a contest: a full match now has an opponent that types, lands damage,
+and takes rounds off you.
 
-The implementation plan is `docs/plan/seeded-selection-replay.html`. The user
-approved all four slices: deterministic selection, browser history, recording and
-replay, then verification and documentation.
+**The next coding task is [#8 — intermission and taunts](https://github.com/ananthanandanan/TypeFeud/issues/8)**
+or [#9 — results](https://github.com/ananthanandanan/TypeFeud/issues/9), both
+unblocked. [#1 — CI](https://github.com/ananthanandanan/TypeFeud/issues/1) is
+still small, still unblocked and now well overdue — every verification below was
+run by hand.
 
-## Files read
+M2 still needs #8, #9, #10, #11 and #12 before its exit criterion is met. #12
+(tuning) is the real end of the milestone and it depends on this task, #9 and #11.
 
-- `AGENTS.md` — repository workflow and validation requirements.
-- `TASKS.md` — task #6 scope and dependency on #5.
-- `SPEC.md` — selection, deterministic-engine and replay requirements.
-- `docs/design/README.md` — UI constraints; task #6 adds no new UI.
-- `docs/handoff.md` — previous state after #5; this file replaces it.
-- `apps/web/src/match/use-match.ts` — old `FIRST_DEAL` hydration workaround and browser effects.
-- `apps/web/src/match/machine.ts` — pure match phase transitions.
-- `packages/content/src/deal.ts` — existing injected randomness and exhaustion fallback.
-- `packages/game/src/engine.ts` and `packages/game/src/types.ts` — round rules and trace types.
+## What #7 built
+
+The plan is `docs/plan/scripted-ghost-opponent.html`, approved in five slices.
+
+**The engine gained one generic primitive, not a bot.** `applyProgressSnapshot`
+in `packages/game/src/opponent-progress.ts` folds a `{lineId, charIndex, errors}`
+snapshot into a round, and `driveRound` gained a matching `progress` input. The
+opponent then resolves through `resolveLine` on the identical path a keystroke
+takes — the only difference between a ghost and a person is how the progress got
+there. #14 replaces the source and touches none of this.
+
+**The ghost lives in the web app.** `apps/web/src/match/ghost.ts` owns three
+canned traces, deterministic line choice, seeded jitter and the schedule. A trace
+is normalized inter-keystroke cadence plus a WPM, which makes it independent of
+the line it is replayed over. Nothing in it reaches into the engine.
+
+**Replay needed no ghost at all.** Every snapshot is recorded as an ordinary
+input event, so playback consumes the effects and never re-runs the cause. The
+replay-equality test is the proof.
+
+## Three decisions the plan did not foresee
+
+- **`MatchState`'s `lineOutcome`, `lastKeyAt` and `generation` are now per slot.**
+  The plan's file list omitted `machine.ts` entirely. It could not have worked:
+  those three fields were the local player's alone, and the ghost needs an impact
+  beat of its own before it can be dealt again. Without it the ghost lands exactly
+  one line per round and then stands there. Indexing by slot rather than bolting
+  on opponent-shaped fields keeps the ghost's scheduling a parameterized copy of
+  the player's, and it is the shape #14 wants anyway.
+- **`buildGhostSchedule` takes a derived seed, not a threaded random cursor.**
+  The plan had `randomState` in and out, like `selectOptions`. That is wrong for a
+  React effect: Strict Mode double-invokes, and a threaded cursor would quietly
+  produce a different ghost the second time. `ghostSeed(seed, round, generation)`
+  makes the schedule a pure function of the deal instead.
+- **A decreasing `charIndex` is accepted, not rejected.** The plan said "rejects
+  stale or impossible snapshots". Impossible is rejected; stale cannot be told
+  apart from a backspace, and invariant 6 says the repair is the real one.
+  Ordering is the transport's job — in-process now, an ordered socket at #14.
 
 ## Files written / edited
 
 | File | Change |
 |---|---|
-| `docs/plan/seeded-selection-replay.html` | Approved visual implementation plan. |
-| `packages/game/src/random.ts` | Added explicit-state Mulberry32 PRNG and independent player seeds. |
-| `packages/game/src/round-driver.ts` | Added the shared live/replay input path and per-player resolve-once guards. |
-| `packages/game/src/replay.ts` | Added versioned replay setup, deals, events and line snapshots. |
-| `packages/game/src/index.ts` | Exported random, replay and round-driver APIs. |
-| `packages/game/src/engine.ts` | `dealOptions` now records every displayed option as seen. |
-| `packages/game/src/types.ts` | Clarified displayed-line semantics and removed unused `rngCursor`. |
-| `packages/content/src/deal.ts` | Added recent-history exclusion, stable ordering, tag variety, deterministic exhaustion and first-character backtracking. |
-| `packages/content/src/pool.ts` | Updated ownership comments for seeded selection. |
-| `apps/web/src/match/selection.ts` | Added pure per-player deal transactions and immutable line snapshots. |
-| `apps/web/src/match/history.ts` | Added the versioned three-match localStorage ring with safe in-memory fallback. |
-| `apps/web/src/match/session.ts` | Added pure session creation, event recording, phase coordination and playback. |
-| `apps/web/src/match/use-match.ts` | Replaced `FIRST_DEAL` and direct engine closures with one browser-initialized recorded session. |
-| `apps/web/src/match/machine.ts` | Accepts driven round state and preserves pure phase sequencing. |
-| `apps/web/src/components/match-stage.tsx` | Shows the arena reveal while browser session initialization completes. |
-| `packages/game/test/random.test.ts` | Added fixed-vector and uint32 PRNG tests. |
-| `packages/game/test/round-driver.test.ts` | Added resolution, deadline, repair, timeout and slot tests. |
-| `packages/content/test/selection.test.ts` | Added history, exhaustion, stable-order, backtracking and tag tests. |
-| `packages/content/test/deal.test.ts` | Updated seen semantics and added a live small-pool selectability regression. |
-| `apps/web/test/history.test.ts` | Added ring retention, invalid storage and storage-failure tests. |
-| `apps/web/test/replay.test.ts` | Added full-match replay, JSON round-trip, content-edit, ordering, shortcuts and stale-action tests. |
-| `packages/game/test/{engine,lock-in,match,resolve-line}.test.ts` | Removed obsolete `rngCursor` fixture fields. |
-| `SPEC.md` | Documented final selection, exhaustion, deadline and replay contracts. |
-| `TASKS.md` | Marked #6 implemented locally, not committed or merged. |
+| `packages/game/src/opponent-progress.ts` | **New.** Snapshot → `LineProgress`, with what it refuses and what it synthesizes. |
+| `packages/game/src/round-driver.ts` | Added the `progress` input; extracted `resolveIfComplete` so keys and snapshots share one resolution. |
+| `packages/game/src/index.ts` | Exported the new module. |
+| `packages/protocol/src/index.ts` | Extracted `progressSnapshotSchema`; `progress` and `opponent.progress` now derive from it. |
+| `apps/web/src/match/ghost.ts` | **New.** Traces, `ghostSeed`, `buildGhostSchedule`, 10Hz downsampling. |
+| `apps/web/src/match/machine.ts` | Round-scoped view state is per slot; `line.resolved`/`line.dealt`/`round.changed` carry a slot. |
+| `apps/web/src/match/session.ts` | Lifted the `input.slot === 0` guard on resolution and dealing. |
+| `apps/web/src/match/use-match.ts` | Added the ghost's schedule effect and its impact beat; the deal guard is now per slot. |
+| `apps/web/src/components/match-hud.tsx` | Added the opponent activity strip. |
+| `apps/web/src/components/match-stage.tsx` | Reads slot 0 explicitly; passes the opponent's outcome to the HUD. |
+| `apps/web/src/components/typing-stage.tsx` | Removed the `pending #7` marker. |
+| `packages/game/test/opponent-progress.test.ts` | **New.** 11 tests: selection, clock, errors, refusals, backspace, resolve-once, deadline. |
+| `apps/web/test/ghost.test.ts` | **New.** 13 tests: seed purity, offered-line legality, 10Hz cap, pace, full match, replay equality. |
+| `apps/web/test/replay.test.ts` | Updated for the per-slot `lineOutcome`. |
+| `SPEC.md` | §4.3 snapshot contract, §4.8 as-built ghost, §7.2 what `?bot=1` now does. |
+| `TASKS.md` | #7 marked done with what moved. |
+| `docs/plan/scripted-ghost-opponent.html` | The approved plan, patched before implementation and reconciled after. |
 
-## Bugs found and fixes made
+## The one new visual, and why it is small
 
-- **Hydration required a fake first deal.** Server and client randomness differed,
-  so `use-match.ts` rendered `FIRST_DEAL` and replaced it after mount. Both now
-  render only the arena reveal initially; one browser session is created after
-  storage and randomness are available.
-- **Completed lines were the only lines considered seen.** Unchosen displayed
-  options could repeat immediately. `openRound` and `dealOptions` now record all
-  displayed option IDs. Pending intermission options count when their round opens.
-- **The small content pool can exhaust compatible first characters.** Strictly
-  excluding every displayed line produced choices with the same first character,
-  so some cards could not be selected. The dealer now relaxes last-three-match
-  exclusions first, then current-match exclusions, and repeats before presenting
-  an avoidable lock-in collision.
-- **Greedy distinct-character selection could strand a later tier.** The dealer
-  now backtracks over the three slots and preserves distinct first characters when
-  any valid combination exists.
-- **A key at the deadline could beat a delayed timeout callback.** `driveRound`
-  checks the deadline before applying a key, Special or deal. The interval ends at
-  `endsAt`; an input there cannot deal damage or win the trigger.
-- **`resolveLine` could be called twice while completed text remained visible.**
-  `DrivenRound` stores a resolution guard per player and clears it only on a deal.
-- **Typing after completion could move the impact deadline.** The session updates
-  `lastKeyAt` only when local progress actually changes.
-- **One player's selection could perturb the other's.** Each slot now owns an
-  independent seeded random stream that advances only on a committed deal.
+The HUD gained an opponent activity strip: `TYPING · 27 / 56 · 2 ERRORS` over a
+thin track, on the opponent's side, outside the typing panel's bounding box.
 
-## Skills used
+TypeRacer answers "where is my opponent" with a car whose *position is the
+progress*. That does not transfer. Position on screen is already spoken for —
+you are always left, the opponent always right, which is rule 1 of the design
+system — and the opponent holds three lines you were not dealt, so painting
+their text would have the player reading the wrong half of the screen at speed.
 
-- `/ank:visualise-plan` — wrote and received approval for
-  `docs/plan/seeded-selection-replay.html` before implementation.
-- `/ank:no-yap` — explained task #6 and its relationship to the ghost in plain language.
-- `/ank:handoff` — rewrote this repository's canonical `docs/handoff.md` at the
-  user's request. The repo explicitly requires rewriting this file in place.
+The real equivalent of the car is the opponent's **stick figure**: progress
+crossing a threshold plays a punch (SPEC §4.3 rule 4), and the thing that races
+along the track is **HP**. Both are Milestone 5. The strip is the stand-in until
+then, and it is the one piece of this task the art milestone is free to delete.
 
-## Links / references
+It is hidden without `?bot=1`, because an idle strip would be a lie about what
+the other side is doing.
 
-- Task: [GitHub issue #6](https://github.com/ananthanandanan/TypeFeud/issues/6)
-- Next task: [GitHub issue #7](https://github.com/ananthanandanan/TypeFeud/issues/7)
-- Last merged feature: [PR #18](https://github.com/ananthanandanan/TypeFeud/pull/18)
-- Plan: `docs/plan/seeded-selection-replay.html`
-- Binding sections: `SPEC.md` §§3.6, 4.2 and 5.3.
+## Verification
 
-## Key decisions
+All run against the final state of the branch:
 
-- A seed makes selection reproducible; the ghost itself needs recorded or
-  simulated typing. The saved offers and line snapshots are what let an old replay
-  survive later content edits.
-- Replay v1 stores seed/setup, initial tuning/history, line snapshots, every deal,
-  keys, Specials, tuning changes, clock evaluations and phase changes. Damage, HP,
-  momentum, carry and winners are recomputed and never trusted from the recording.
-- Replay timestamps are relative to session initialization. Equal timestamps use a
-  monotonic sequence number. Decreasing time and invalid phase actions are rejected.
-- The current replay stays in memory through results. Only distinct displayed line
-  IDs from slot 0 enter `typefeud.recent-lines.v1` at results, once per session ID.
-  No keystrokes, results or user statistics are persisted.
-- The history ring contains the last three completed local sessions. Abandoned
-  sessions do not enter it. Malformed, unavailable or quota-limited storage cannot
-  block play.
-- Small-pool repetition is an explicit exception to the old absolute “never
-  repeat” wording. Playable, distinguishable choices take priority. `SPEC.md` now
-  records the exact relaxation order.
-- `packages/game` remains pure. Browser clocks, crypto randomness and localStorage
-  stay in `use-match.ts`; selection and session/replay logic accept injected data.
-- There is still no tick loop. Live play retains one timeout per round boundary.
+- `pnpm test` — **179 passed**: game 108, web 41, content 26, protocol 4.
+- `pnpm typecheck` — passed in all five workspaces.
+- `pnpm lint` — passed, no warnings.
+- `pnpm build` — passed.
+- `pnpm --filter @typefeud/content validate` — 9 passed.
+- **Browser, `?bot=1&round=1`.** An unanswered ghost knocks the player out in all
+  three rounds: `0—92`, `0—76`, `0—110`, GHOST WINS. Playing back, both sides
+  type at once, the ghost's strip tracks its line and shows its standing errors
+  in red, damage lands both ways, and the strip never touches the player's text.
+  No console errors.
+- **Browser, no `?bot=1`.** Opponent idle, strip hidden, local typing unchanged.
 
-## Current state
-
-The implementation and validation are complete on
-`feat/seeded-selection-replay`, which tracks the pushed remote branch. Task #6 is
-not merged into `main` yet.
-
-Observed verification:
-
-- Latest `pnpm test` passed: **155 tests** total — game 97, content 26, protocol 4,
-  web 28; server has no test files.
-- Latest `pnpm typecheck` passed in all five workspaces.
-- Latest `pnpm lint` passed with no warnings.
-- The final `pnpm build` passed after the small-pool dealer adjustment.
-- An isolated headless Chromium full-match pass ran after the small-pool fix:
-  trigger `100—92`, debate `100—0`, roast `100—0`, fight `125—0`, player wins.
-  It observed one seed creation, one history write and no browser console/runtime
-  errors. The stored history contained all seven currently authored displayed IDs.
-- The browser pass used `?round=0`. Automated replay tests cover all four `?round=`
-  starting points and the `?tier=haymaker` override.
-- A reload preserved the existing history, created exactly one new seed, read the
-  history and made no premature write. A separate page with `localStorage` reads
-  and writes forced to throw still reached a playable debate with no console or
-  runtime errors.
-- The user ran the app after implementation and confirmed the manual smoke test
-  passed, including normal match progression and the new selection/history behavior.
-- The complete diff was reviewed. The only cleanup finding was two Markdown
-  trailing-space lines in this handoff; they were removed.
+Note on the browser pass: synthetic CDP keystrokes only reach the window
+listener after a click into the page. That is the harness, not the app.
 
 ## Open questions / not done
 
-- `ReplayRecord` is an internal v1 shape. There is no import/export UI, replay
-  viewer, durable storage, account history or statistics page.
-- The tuning panel records full tuning snapshots when it changes. Confirm during
-  review whether this is preferable to recording only changed fields.
-- Cross-tab history is best effort. A read occurs immediately before a write, but
-  there is no locking or account-level synchronization.
-- #7 must decide how canned ghost recordings select a compatible offered line and
-  how light timing jitter affects deterministic test fixtures.
-- The ghost is still absent. Slot 1 is only driven by test fixtures.
-- #1 CI remains open, so verification still depends on local commands.
-- #11 content remains open. Roast and fight currently widen into the six debate
-  lines, and the trigger still has one word.
-- Commit `200fb5f` (`feat: seeded selection and replay traces`) is pushed to
-  `origin/feat/seeded-selection-replay`.
-- No PR, GitHub issue update or review-board artifact was created yet.
+- **Nothing tunes the ghost yet.** It knocks out an idle player in roughly a third
+  of a round, which is correct — an unopposed opponent should win — but whether it
+  is *fun* is #12's question, and #12 also needs #9 and #11.
+- **One skill level.** Three profiles near `PAR_WPM`, chosen by seed. Matching the
+  player's recent WPM needs a performance store that does not exist until #9.
+- **Traces are hand-authored fixtures.** A recorder and a reviewed trace library
+  belong with content tooling; the shapes span metronomic, bursty and careless.
+- **The ghost's constants are not in `Tuning`.** Deliberately: invariant 1 keeps
+  `packages/game` pure and a damage engine must not know a bot exists. #12 may
+  want to reach them from the tuning panel, which is a real question to answer
+  then, not now.
+- **No stick figures, no punch animation.** M5.
+- **#6 is still unmerged**, and this branch does not depend on it being merged
+  first, but the PRs should go in order.
+- **#1 CI is still open**, so all of the above was run by hand.
+- Nothing is committed on this branch yet; `docs/plan/scripted-ghost-opponent.html`
+  is still untracked.
 
 ## Next steps
 
-1. Open the PR from `feat/seeded-selection-replay` to `main` for issue #6. Include
-   no co-author, generated-by or tooling metadata.
-2. Include the implementation summary, `pnpm test`, `pnpm typecheck`, `pnpm lint`,
-   `pnpm build`, and the browser verification in the PR description.
-3. After #6 merges, begin #7 by consuming a canned recorded trace as slot 1 input
-   through `advanceSession`; keep the ghost source behind the same event shape that
-   later multiplayer progress will replace.
+1. Commit `feat/scripted-ghost` and open the PR for #7. No co-author or tooling
+   metadata in the message.
+2. Land #6 first if it is still open, then #7.
+3. Then #8 or #9 — both unblocked, and #9 is what unlocks adaptive ghost skill.
