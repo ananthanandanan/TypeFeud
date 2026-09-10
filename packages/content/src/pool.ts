@@ -1,9 +1,9 @@
 /**
  * The committed pool, loaded and validated at import. SPEC §3.6.
  *
- * The read side only. Which three lines a player is offered is `deal.ts`, and
- * the seeded no-repeat rule that will drive it lands with T-06 (#6). This
- * module hands out what has been authored, filtered.
+ * The read side only. Which three lines a player is offered is `deal.ts`;
+ * the session injects seeded randomness and recent history. This module
+ * hands out what has been authored, filtered.
  */
 
 import groupchatDebate from "../pool/groupchat-debate.json";

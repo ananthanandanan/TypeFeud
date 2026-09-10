@@ -44,7 +44,6 @@ function round(overrides: Partial<RoundState> = {}): RoundState {
     endsAt: 45_000,
     status: "live",
     players: [player(), player({ slot: 1 })],
-    rngCursor: 0,
     ...overrides,
   };
 }

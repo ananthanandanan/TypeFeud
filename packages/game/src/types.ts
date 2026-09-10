@@ -59,7 +59,7 @@ export interface PlayerState {
   /** consecutive clean lines; SPECIAL unlocks at MOMENTUM_CHARGES_FOR_SPECIAL */
   momentum: number;
   specialArmed: boolean;
-  /** line ids already served this match — never repeat. SPEC §3.6. */
+  /** All displayed option IDs this match, including unchosen lines. SPEC §3.6. */
   seenLineIds: string[];
 }
 
@@ -76,8 +76,6 @@ export interface RoundState {
   /** "over" once the deadline passed or a player reached 0 HP. SPEC §2.7. */
   status: RoundStatus;
   players: [PlayerState, PlayerState];
-  /** seeded PRNG cursor — advanced only through pure helpers */
-  rngCursor: number;
 }
 
 export interface LineOutcome {

@@ -72,12 +72,13 @@ are tuned. All solo, no network.
   - **Depends on:** T-04 (#4)
   - **Merged in [#18](https://github.com/ananthanandanan/TypeFeud/pull/18), 2026-09-06.** `packages/game` has no stubs left; `roundResult` and `startingHp` joined the two the task named. The phase sequence lives in `apps/web/src/match/machine.ts`, pure and React-free so T-13 (#13) moves it rather than rewrites it. Three spec moves: §2.7 gained the 0-HP rule for rounds 1–2 (a knockout ends **any** round), the draw rule and the momentum rule; §2.2 gained the trigger's quick-draw end condition, and its winner is read from progress rather than HP so the result does not depend on resolve/tick ordering; §4.2 gained both new functions. Dealing follows the impact beat instead of the enter key. Plan: `docs/plan/full-match-flow.html`.
 
-- [ ] **[T-06 #6](https://github.com/ananthanandanan/TypeFeud/issues/6)** `feat: seeded line selection and replay trace format` `M`
-  - Seeded PRNG; never repeat a line within a match, nor within the player's last 3 matches via a localStorage ring buffer (SPEC §3.6).
+- [x] **[T-06 #6](https://github.com/ananthanandanan/TypeFeud/issues/6)** `feat: seeded line selection and replay trace format` `M`
+  - Seeded PRNG; avoid displayed lines within a match and the player's last 3 completed matches via a localStorage ring buffer, with the reviewed small-pool/selectability exception (SPEC §3.6).
   - Replay format stores seed, chosen lines, and keystroke traces; everything else regenerates by re-running the engine (SPEC §5.3).
   - Test asserts replaying a trace reproduces an identical final state.
   - Built now though export ships at Milestone 6 — retrofitting determinism later is miserable work.
   - **Depends on:** T-05 (#5)
+  - **Implemented and verified locally, 2026-09-10; not yet merged.** Independent seeded player streams, displayed-option history, browser initialization without `FIRST_DEAL`, versioned in-memory recording and full-match replay through the shared round driver. Deadline input is rejected before mutation; resolution is guarded per slot. Automated checks and the user's browser smoke test pass. SPEC §§3.6, 4.2 and 5.3 document the final contracts. Plan: `docs/plan/seeded-selection-replay.html`.
 
 - [ ] **[T-07 #7](https://github.com/ananthanandanan/TypeFeud/issues/7)** `feat: scripted ghost opponent` `M`
   - Replays a canned trace with light timing jitter, consumed as a stream of `{lineId, charIndex, errors}` so T-11 (#11) swaps the data source rather than restructuring anything.

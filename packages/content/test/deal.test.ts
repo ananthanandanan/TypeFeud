@@ -31,14 +31,15 @@ describe("dealThree", () => {
     expect(new Set(chars).size).toBe(3);
   });
 
-  it("skips lines the player has already been served", () => {
+  it("prefers unseen alternatives while keeping all three choices selectable", () => {
     const first = dealThree({ round: "debate" }, [], fixed(0));
     const again = dealThree(
       { round: "debate" },
       first.map((line) => line.id),
       fixed(0),
     );
-    for (const line of again) expect(first.map((l) => l.id)).not.toContain(line.id);
+    expect(again.filter((line) => !first.some((previous) => previous.id === line.id))).toHaveLength(2);
+    expect(new Set(again.map((line) => firstChar(line.text))).size).toBe(3);
   });
 
   it("repeats rather than dealing an empty slot when a tier runs dry", () => {
@@ -66,6 +67,17 @@ describe("dealThree", () => {
 });
 
 describe("dealThree — first-character collisions", () => {
+  it("keeps the small live pool selectable when every displayed option counts as seen", () => {
+    for (const draw of [0, 0.3, 0.7, 1]) {
+      const seen: string[] = [];
+      for (let i = 0; i < 8; i++) {
+        const dealt = dealThree({ round: "debate" }, seen, () => draw);
+        expect(new Set(dealt.map((line) => firstChar(line.text))).size).toBe(3);
+        seen.push(...dealt.map((line) => line.id));
+      }
+    }
+  });
+
   it("fills the most-constrained tier first", () => {
     // Second deal of a match: the haymaker that does not start with "Y" has
     // already been served, so the only one left collides with both the jab and

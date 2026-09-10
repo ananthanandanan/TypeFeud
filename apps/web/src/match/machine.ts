@@ -6,9 +6,9 @@
  * Pure and React-free on purpose. At Milestone 3 the server owns this sequence
  * (#13, room lifecycle) and the client becomes a renderer of it, so keeping the
  * transitions out of a component means that issue moves this file rather than
- * rewriting it. Everything impure — reading the clock, scheduling the timers,
- * dealing from the pool — lives in `use-match.ts` and arrives here as an action
- * parameter, the same way `packages/game` takes `now` rather than reading it.
+ * rewriting it. The pure session layer supplies driven rounds and dealt options.
+ * Browser I/O stays in `use-match.ts`; relative timestamps arrive as action
+ * parameters, the same way `packages/game` takes `now` rather than reading it.
  *
  * It holds the round-scoped view state (`lineOutcome`, `lastKeyAt`,
  * `generation`) as well as the sequence, so opening a round clears all of it in
@@ -50,9 +50,9 @@ export interface MatchState {
   outcome: MatchOutcome | null;
 
   /**
-   * performance.now() when the current round began. `RoundState.endsAt` is
-   * relative to it, which is what keeps the engine free of wall-clock time.
-   * Null until the first round starts.
+   * Session-relative time when the round began. `RoundState.endsAt` is relative
+   * to this start. The browser hook translates this value to performance.now()
+   * coordinates for the HUD only. Null until the first round starts.
    */
   roundStartedAt: number | null;
   /** what the last completed line did; cleared when the next three are dealt */
@@ -98,8 +98,8 @@ function player(
     // SPEC §2.7 — a fresh HP pool gets a fresh meter. Momentum does not carry.
     momentum: 0,
     specialArmed: false,
-    // Seen lines DO carry, so a match never serves the same line twice.
-    seenLineIds: [...seenLineIds],
+    // Displayed options carry across rounds; the dealer owns exhaustion fallback.
+    seenLineIds: [...new Set([...seenLineIds, ...options.map((line) => line.id)])],
   };
 }
 
@@ -122,7 +122,6 @@ export function openRound(
       player(0, startingHp(round, results, 0, tuning), options[0], seen[0]),
       player(1, startingHp(round, results, 1, tuning), options[1], seen[1]),
     ],
-    rngCursor: 0,
   };
 }
 
@@ -157,13 +156,8 @@ function starting(state: MatchState, round: RoundState, now: number): MatchState
 export type MatchAction =
   /** the arena reveal is over; play the round already built into state */
   | { type: "arena.done"; now: number }
-  /**
-   * Fold a pure engine call into the live round. The transform is passed rather
-   * than the result so a keystroke handler never has to close over stale state,
-   * and the machine stays a sequence rather than growing game rules. `at` is
-   * the keystroke's timestamp when the transform came from one.
-   */
-  | { type: "round.apply"; apply: (round: RoundState) => RoundState; at?: number }
+  /** The shared driver has applied a serializable input to this round. */
+  | { type: "round.changed"; round: RoundState; at?: number }
   /** a line landed: the round after resolution, and what the line was worth */
   | { type: "line.resolved"; round: RoundState; outcome: LineOutcome }
   /** the impact beat is over and the next three are up */
@@ -171,13 +165,7 @@ export type MatchAction =
   /** the round is over — `options` are the deal for whatever comes next */
   | { type: "round.end"; options: DealtOptions; now: number; tuning?: Tuning }
   /** the beat between rounds has run its course */
-  | { type: "intermission.done"; now: number }
-  /**
-   * Replace the match wholesale. Only the hydration re-deal uses this: the
-   * first render has to be the one the server sent, and the real deal cannot
-   * happen until the client has adopted that markup (see `FIRST_DEAL`).
-   */
-  | { type: "match.reset"; match: MatchState };
+  | { type: "intermission.done"; now: number };
 
 /**
  * The whole sequence, in one place.
@@ -192,11 +180,10 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
     case "arena.done":
       return state.phase === "arena" ? starting(state, state.round, action.now) : state;
 
-    case "round.apply": {
+    case "round.changed": {
       if (state.phase !== "round") return state;
-      const round = action.apply(state.round);
-      // Engine calls return the argument unchanged when they are no-ops, which
-      // is what lets an ignored keystroke skip a render.
+      const round = action.round;
+      // Ignored input preserves the logical match state.
       if (round === state.round && action.at === undefined) return state;
       return { ...state, round, lastKeyAt: action.at ?? state.lastKeyAt };
     }
@@ -237,8 +224,5 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
       return state.phase === "intermission" && state.pending
         ? starting(state, state.pending, action.now)
         : state;
-
-    case "match.reset":
-      return action.match;
   }
 }

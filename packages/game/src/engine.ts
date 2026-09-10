@@ -142,7 +142,10 @@ export function dealOptions(
   options: [Line, Line, Line],
 ): RoundState {
   const players = [...state.players] as [PlayerState, PlayerState];
-  players[slot] = { ...players[slot], options, progress: null };
+  players[slot] = {
+    ...players[slot], options, progress: null,
+    seenLineIds: [...new Set([...players[slot].seenLineIds, ...options.map((line) => line.id)])],
+  };
   return { ...state, players };
 }
 
