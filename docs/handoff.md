@@ -1,7 +1,7 @@
 # Handoff
 
-Task #6 — seeded line selection and replay traces — is implemented and fully
-verified locally, but remains uncommitted and unmerged.
+Task #6 — seeded line selection and replay traces — is implemented, fully
+verified, committed as `200fb5f`, and pushed; it remains unmerged.
 
 **Branch:** `feat/seeded-selection-replay`
 **Last updated:** 2026-09-11
@@ -127,9 +127,9 @@ replay, then verification and documentation.
 
 ## Current state
 
-The implementation and validation are complete. The worktree is intentionally
-dirty because task #6 changes are not committed, pushed or merged. `TASKS.md` says
-“implemented locally” for this reason.
+The implementation and validation are complete on
+`feat/seeded-selection-replay`, which tracks the pushed remote branch. Task #6 is
+not merged into `main` yet.
 
 Observed verification:
 
@@ -167,13 +167,14 @@ Observed verification:
 - #1 CI remains open, so verification still depends on local commands.
 - #11 content remains open. Roast and fight currently widen into the six debate
   lines, and the trigger still has one word.
+- Commit `200fb5f` (`feat: seeded selection and replay traces`) is pushed to
+  `origin/feat/seeded-selection-replay`.
 - No PR, GitHub issue update or review-board artifact was created yet.
 
 ## Next steps
 
-1. Create a feature branch, commit with a history-style
-   subject such as `feat: seeded selection and replay traces`, and open the PR for
-   issue #6. Do not add co-author, generated-by or tooling metadata.
+1. Open the PR from `feat/seeded-selection-replay` to `main` for issue #6. Include
+   no co-author, generated-by or tooling metadata.
 2. Include the implementation summary, `pnpm test`, `pnpm typecheck`, `pnpm lint`,
    `pnpm build`, and the browser verification in the PR description.
 3. After #6 merges, begin #7 by consuming a canned recorded trace as slot 1 input
