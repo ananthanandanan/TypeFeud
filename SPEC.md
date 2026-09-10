@@ -589,8 +589,12 @@ pnpm dev          # turbo: web on :3000, server on :3001
 
 ### 7.2 Development tooling to build early
 
-- **`?bot=1`** — instantly start a match against a ghost, skipping the queue. As
-  of T-07 this drives every round: the ghost picks a line, types it at a canned
+- **`?bot=0`** — turn the ghost off and leave the opponent idle. The ghost is the
+  **default** as of T-07: there is now a real opponent to play against, and an
+  idle one makes a bare `localhost:3000` look broken rather than unimplemented.
+  Matchmaking (Milestone 4) is what decides this for real, with a ghost as the
+  queue-empty fallback. With the ghost on, which is to say normally, it drives
+  every round: the ghost picks a line, types it at a canned
   human pace, lands damage, and is dealt three more after the impact beat, the
   same as the player. Without the flag the opponent stays idle, and the HUD's
   opponent activity strip is hidden rather than showing a still bar — an idle
