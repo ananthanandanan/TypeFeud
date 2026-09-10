@@ -230,10 +230,30 @@ Backlog: Comment Section, Courtroom, Parents' Evening, Group Project.
 
 ### 3.6 Selection algorithm
 
-- Never repeat a line within a match
-- Never repeat within a player's last 3 matches (localStorage ring buffer, no DB needed)
-- Weight by `responseTo` match against opponent's last line (phase 2)
-- Prefer unseen tags for variety
+- Use a saved uint32 seed with independent per-player Mulberry32 streams. Advance a
+  stream only when committing that player's deal; keep it across round boundaries.
+  Stable candidate ID order makes selection independent of JSON file order.
+- Count every displayed option as seen, including initial and unchosen options.
+  Pending intermission offers count only when the next round becomes visible.
+- Exclude this match's displayed lines and the player's last three completed
+  matches. Snapshot recent history at startup; persist distinct local-player line
+  IDs at results in `typefeud.recent-lines.v1`, once per session ID. Abandoned
+  sessions do not enter the ring. No database, scores or keystrokes are stored there.
+- **Small-pool exception:** when eligible lines cannot fill a tier or cannot form
+  three distinct first characters, relax recent-match exclusions first, then
+  current-match exclusions. Prefer fresher candidates within each relaxed search.
+  Repeat before presenting an unselectable option. If even the full pool cannot
+  supply distinct first characters (the one-word trigger or a dev tier override),
+  retain the options-order lock-in tie-break in §2.3. Missing round/tier content
+  retains the existing wider-pool fallback until #11.
+- Prefer unseen tags for variety among equally fresh candidates; preserve a valid
+  first-character combination over tag preference. `responseTo` weighting is phase 2.
+- Missing, malformed or inaccessible localStorage starts with empty history.
+  Storage failures keep an in-memory fallback for the page lifetime and never block
+  a match. Storage is best-effort across tabs, not synchronized account history.
+- Server HTML and the client's first render show the arena reveal without a deal.
+  After mount, initialize one session from the browser seed and history, then start
+  the reveal timer. No throwaway deal or post-hydration re-deal is needed.
 
 ---
 
@@ -269,6 +289,9 @@ tickRound(state: RoundState, now: number): RoundState
 roundResult(state: RoundState): RoundResult | null
 startingHp(round: RoundName, rounds: readonly RoundResult[], slot: PlayerSlot, tuning?: Tuning): number
 resolveMatch(rounds: RoundResult[]): MatchOutcome
+driveRound(state: DrivenRound, input: RoundInput, at: number, tuning: Tuning): DrivenRound & { outcome: LineOutcome | null }
+nextRandom(state: number): { value: number; state: number }
+playerSeeds(seed: number): [number, number]
 ```
 
 `resolveLine` returns `{ state, outcome }` rather than a bare `LineOutcome`, and
@@ -282,13 +305,25 @@ next completed line is the one multiplied.
 `lockIn` and `dealOptions` are the two halves of §2.3. `applyKeystroke` delegates to
 `lockIn` when the player has no line locked in, so both apps have exactly one
 keystroke entry point and can never disagree about which line was committed to.
-`dealOptions` installs three fresh options and clears `progress`; which three is not
-this package's business, because it may not know the content pool exists.
+`dealOptions` installs three fresh options, records all their IDs as displayed,
+and clears `progress`; which three is not this package's business, because it may
+not know the content pool exists.
 
 `resolveLine` leaves `progress` standing rather than clearing it, so the finished
 line stays on screen through the impact beat. `dealOptions` is what ends it, and the
-caller **must resolve each completed line exactly once** — nothing in the state
-records that resolution already ran.
+caller **must resolve each completed line exactly once**. The shared `driveRound`
+wrapper stores one resolution guard per slot in `DrivenRound`, clears it on a deal,
+and is used by both live sessions and replay. Direct callers of `resolveLine` still
+own that guard.
+
+`driveRound` checks the deadline **before** accepting a key, Special or deal. Inputs
+at or after `endsAt` close the round without changing progress or dealing damage.
+This removes a race with a delayed browser timeout; the playing interval excludes
+its deadline. Before the deadline, a key is applied, ticked, resolved once if
+complete, then ticked again for a knockout. Trigger completion still wins on its
+completing keystroke. Input during the impact beat cannot resolve again or extend
+the beat's start timestamp. The unused `RoundState.rngCursor` is removed; the pure
+session owns the two explicit PRNG stream states.
 
 `tickRound` is the round's end condition and nothing else: it moves `RoundState.status`
 to `over` and never back. `roundResult` is its read side — null while the round is live
@@ -415,22 +450,40 @@ Ship without Postgres, without Redis, without auth. Every one of them is addable
 
 ### 5.3 Replay format
 
-Deterministic and small. Store the seed, the chosen lines, and the keystroke traces; regenerate everything else by re-running `packages/game`.
+`ReplayRecord` v1 is defined in `packages/game/src/replay.ts`. The pure session
+coordinator in `apps/web/src/match/session.ts` records live commands and replays
+those same commands through `driveRound` plus the existing phase machine.
 
-```jsonc
-{
-  "matchId": "...",
-  "seed": 918273,
-  "arena": "group_chat",
-  "players": [{"nickname": "maya"}, {"nickname": "dev_p"}],
-  "events": [
-    {"t": 1240, "p": 0, "lineId": "grpchat-debate-jab-003", "trace": [...]},
-    {"t": 2100, "p": 1, "lineId": "grpchat-debate-hay-014", "trace": [...]}
-  ]
-}
-```
+| Field | Contents |
+|---|---|
+| `version` | `1`; unsupported versions are rejected |
+| `setup` | Session ID, seed, arena, starting round, optional tier override, initial tuning, initial recent-line IDs for each slot |
+| `lines` | One snapshot per offered line ID: text, tier and word count |
+| `initialDeals` | Three option IDs and the post-deal random state for each slot |
+| `events` | Ordered `{seq, round, at, action}` entries |
 
-**Build the replay format in Milestone 1, even if export ships much later.** Retrofitting determinism into an engine that assumed it could call `Math.random()` is miserable work.
+Event `at` is milliseconds since session initialization. Round starts establish
+the offset used to reconstruct round-relative keystroke timestamps. Equal times
+retain `seq` order; negative/decreasing time, out-of-order events and invalid phase
+actions are rejected. Both slots are supported.
+
+Actions record keys (including errors, backspace and incomplete lines), Special
+activation, full tuning updates, clock evaluations, new offers and phase changes.
+New offers store all three option IDs and the post-deal stream state. Chosen line
+IDs are derived from the first matching key and the saved options. Damage, HP,
+momentum, carry and winners are recomputed; no recorded outcome is trusted.
+
+A seed reproduces selection given identical starting inputs. The saved offers and
+line snapshots additionally let an old recording replay after the content pool is
+edited. Playback never selects from the current pool or reads current browser
+history. Changes to game rules require a compatible replay version or a future
+migration; v1 is an internal format, not a public replay-import API.
+
+The browser keeps the recording in memory through results. This task does not
+upload traces, create a statistics/history screen, or provide a replay viewer.
+The recording/driver foundation supports #7's prepared ghost traces; the seed is
+useful for selection tests but is not inherently required to simulate an opponent.
+Export, durable replay storage and clip playback remain Milestone 6.
 
 ---
 

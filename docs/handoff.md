@@ -1,181 +1,182 @@
 # Handoff
 
-**One document, kept current.** It says where the project is, what to do next, and
-which past decisions still constrain the work. It is rewritten in place at the end
-of each issue rather than added to — per-issue handoffs are in git history, and
-`SPEC.md` plus the code comments remain the source of truth for *why* anything
-works the way it does.
+Task #6 — seeded line selection and replay traces — is implemented, fully
+verified, committed as `200fb5f`, and pushed; it remains unmerged.
 
-**Last updated:** 2026-09-06, after #5 merged.
+**Branch:** `feat/seeded-selection-replay`
+**Last updated:** 2026-09-11
 **Working dir:** `/Users/ananthan2k/Gitrepos/TypeFeud`
 
----
+## Agenda
 
-## Where the project is
+Task #6 makes line selection reproducible, remembers recently displayed lines,
+and records enough ordered input to recompute a match. This is infrastructure for
+testing, debugging, later replay/clip work, and #7's scripted ghost. It is not a
+user statistics system or a match-history screen.
 
-```
-M1 — Feel        #2 #3 done          · #1 (CI) open, unblocked
-M2 — The Arc     #4 #5 done ← here   · #6 #7 #8 #9 open
-M3 — Multiplayer #12 #13 #14 open
-```
+The implementation plan is `docs/plan/seeded-selection-replay.html`. The user
+approved all four slices: deterministic selection, browser history, recording and
+replay, then verification and documentation.
 
-A full match runs solo, start to finish: arena reveal → trigger → debate →
-intermission → roast → intermission → fight → results. `packages/game` has no
-stubs left. #5 merged as
-[PR #18](https://github.com/ananthanandanan/TypeFeud/pull/18) (`81c8bbc`).
+## Files read
 
-Merged so far: #2 → [PR #15](https://github.com/ananthanandanan/TypeFeud/pull/15),
-#3 → [PR #16](https://github.com/ananthanandanan/TypeFeud/pull/16),
-#4 → [PR #17](https://github.com/ananthanandanan/TypeFeud/pull/17),
-#5 → [PR #18](https://github.com/ananthanandanan/TypeFeud/pull/18). Each has a plan
-in `docs/plan/`.
+- `AGENTS.md` — repository workflow and validation requirements.
+- `TASKS.md` — task #6 scope and dependency on #5.
+- `SPEC.md` — selection, deterministic-engine and replay requirements.
+- `docs/design/README.md` — UI constraints; task #6 adds no new UI.
+- `docs/handoff.md` — previous state after #5; this file replaces it.
+- `apps/web/src/match/use-match.ts` — old `FIRST_DEAL` hydration workaround and browser effects.
+- `apps/web/src/match/machine.ts` — pure match phase transitions.
+- `packages/content/src/deal.ts` — existing injected randomness and exhaustion fallback.
+- `packages/game/src/engine.ts` and `packages/game/src/types.ts` — round rules and trace types.
 
-## What to do next
+## Files written / edited
 
-1. **[#7 — the scripted ghost](https://github.com/ananthanandanan/TypeFeud/issues/7).**
-   The one that makes this a game. Solo, the opponent never attacks, so every round
-   is won by default and the only way to lose is to self-damage to 0. The flow is
-   proven; the *contest* is not. SPEC §9's named failure mode — does anyone ever
-   pick anything but the safe line? — cannot be answered until there is pressure on
-   the other side of the screen, and #5 sharpened the question by making the clock
-   real: a haymaker that takes 20 seconds is 20 seconds not spent landing jabs.
-2. **[#1 — CI](https://github.com/ananthanandanan/TypeFeud/issues/1).** Small,
-   unblocked, and overdue. `pnpm test && pnpm typecheck && pnpm build` as a GitHub
-   Actions job body. Four PRs have now merged on the strength of those commands
-   passing on one machine.
-3. **[#6 — seeded selection](https://github.com/ananthanandanan/TypeFeud/issues/6).**
-   Cheap, and it deletes real debt: the `FIRST_DEAL` hydration workaround in
-   `apps/web/src/match/use-match.ts` exists only because the deal is unseeded.
-4. **[#11 — content](https://github.com/ananthanandanan/TypeFeud/issues/11)** is
-   what makes the game readable rather than mechanical. See the gaps below.
+| File | Change |
+|---|---|
+| `docs/plan/seeded-selection-replay.html` | Approved visual implementation plan. |
+| `packages/game/src/random.ts` | Added explicit-state Mulberry32 PRNG and independent player seeds. |
+| `packages/game/src/round-driver.ts` | Added the shared live/replay input path and per-player resolve-once guards. |
+| `packages/game/src/replay.ts` | Added versioned replay setup, deals, events and line snapshots. |
+| `packages/game/src/index.ts` | Exported random, replay and round-driver APIs. |
+| `packages/game/src/engine.ts` | `dealOptions` now records every displayed option as seen. |
+| `packages/game/src/types.ts` | Clarified displayed-line semantics and removed unused `rngCursor`. |
+| `packages/content/src/deal.ts` | Added recent-history exclusion, stable ordering, tag variety, deterministic exhaustion and first-character backtracking. |
+| `packages/content/src/pool.ts` | Updated ownership comments for seeded selection. |
+| `apps/web/src/match/selection.ts` | Added pure per-player deal transactions and immutable line snapshots. |
+| `apps/web/src/match/history.ts` | Added the versioned three-match localStorage ring with safe in-memory fallback. |
+| `apps/web/src/match/session.ts` | Added pure session creation, event recording, phase coordination and playback. |
+| `apps/web/src/match/use-match.ts` | Replaced `FIRST_DEAL` and direct engine closures with one browser-initialized recorded session. |
+| `apps/web/src/match/machine.ts` | Accepts driven round state and preserves pure phase sequencing. |
+| `apps/web/src/components/match-stage.tsx` | Shows the arena reveal while browser session initialization completes. |
+| `packages/game/test/random.test.ts` | Added fixed-vector and uint32 PRNG tests. |
+| `packages/game/test/round-driver.test.ts` | Added resolution, deadline, repair, timeout and slot tests. |
+| `packages/content/test/selection.test.ts` | Added history, exhaustion, stable-order, backtracking and tag tests. |
+| `packages/content/test/deal.test.ts` | Updated seen semantics and added a live small-pool selectability regression. |
+| `apps/web/test/history.test.ts` | Added ring retention, invalid storage and storage-failure tests. |
+| `apps/web/test/replay.test.ts` | Added full-match replay, JSON round-trip, content-edit, ordering, shortcuts and stale-action tests. |
+| `packages/game/test/{engine,lock-in,match,resolve-line}.test.ts` | Removed obsolete `rngCursor` fixture fields. |
+| `SPEC.md` | Documented final selection, exhaustion, deadline and replay contracts. |
+| `TASKS.md` | Marked #6 implemented locally, not committed or merged. |
 
-## Decisions that still bind
+## Bugs found and fixes made
 
-Carried forward because they constrain what can be built next, not as a record of
-what happened. Each is also written into `SPEC.md`.
+- **Hydration required a fake first deal.** Server and client randomness differed,
+  so `use-match.ts` rendered `FIRST_DEAL` and replaced it after mount. Both now
+  render only the arena reveal initially; one browser session is created after
+  storage and randomness are available.
+- **Completed lines were the only lines considered seen.** Unchosen displayed
+  options could repeat immediately. `openRound` and `dealOptions` now record all
+  displayed option IDs. Pending intermission options count when their round opens.
+- **The small content pool can exhaust compatible first characters.** Strictly
+  excluding every displayed line produced choices with the same first character,
+  so some cards could not be selected. The dealer now relaxes last-three-match
+  exclusions first, then current-match exclusions, and repeats before presenting
+  an avoidable lock-in collision.
+- **Greedy distinct-character selection could strand a later tier.** The dealer
+  now backtracks over the three slots and preserves distinct first characters when
+  any valid combination exists.
+- **A key at the deadline could beat a delayed timeout callback.** `driveRound`
+  checks the deadline before applying a key, Special or deal. The interval ends at
+  `endsAt`; an input there cannot deal damage or win the trigger.
+- **`resolveLine` could be called twice while completed text remained visible.**
+  `DrivenRound` stores a resolution guard per player and clears it only on a deal.
+- **Typing after completion could move the impact deadline.** The session updates
+  `lastKeyAt` only when local progress actually changes.
+- **One player's selection could perturb the other's.** Each slot now owns an
+  independent seeded random stream that advances only on a committed deal.
 
-**`packages/game` is pure and the round is deadline-based.** `tickRound(state, now)`
-is the round's only end condition — the deadline, a player at 0 HP, or the trigger's
-quick-draw — and it runs on keystrokes plus **one `setTimeout` per round boundary**.
-There is no tick loop and there must never be one (invariant 8, SPEC §4.6). The HUD
-countdown is a render that paints a number and touches no game state; do not read
-its 100ms interval as permission to add a real one.
+## Skills used
 
-**A 0-HP player ends any round, not only round 3** (SPEC §2.7, decided in #5). HP
-never rises and the carry is binary, so a knockout fixes the round's winner and the
-remaining seconds cannot move it. Equal HP is a draw and carries nothing. Momentum
-does not survive a round boundary. The alternative — clamp at 0 and play the round
-out — is one condition in `tickRound` and stays cheap to reverse if #7's pressure
-makes the dead time worth keeping.
+- `/ank:visualise-plan` — wrote and received approval for
+  `docs/plan/seeded-selection-replay.html` before implementation.
+- `/ank:no-yap` — explained task #6 and its relationship to the ghost in plain language.
+- `/ank:handoff` — rewrote this repository's canonical `docs/handoff.md` at the
+  user's request. The repo explicitly requires rewriting this file in place.
 
-**The trigger's winner is read from progress, not HP** (SPEC §2.2, decided in #5).
-Deciding it on damage made the answer depend on whether the caller resolved the
-completing line before ticking or after — the quick-draw closes the round on that
-keystroke, and if the damage had not landed both players sat level and the +5 went
-to nobody. Any future caller, the server included, gets the same answer either way
-now. Trigger damage is discarded with the round's pool.
+## Links / references
 
-**`resolveLine` leaves `progress` standing, so the caller must resolve each
-completed line exactly once** (decided in #3). Clearing it would blank the typing
-surface at the moment the impact beat plays. Nothing in the state records that
-resolution ran, so **resolving twice charges the damage twice**; `use-match.ts`
-guards with a ref. If that needs to be structural — and it probably does once the
-server resolves too — the fix is a `resolvedAt` field on `LineProgress`.
+- Task: [GitHub issue #6](https://github.com/ananthanandanan/TypeFeud/issues/6)
+- Next task: [GitHub issue #7](https://github.com/ananthanandanan/TypeFeud/issues/7)
+- Last merged feature: [PR #18](https://github.com/ananthanandanan/TypeFeud/pull/18)
+- Plan: `docs/plan/seeded-selection-replay.html`
+- Binding sections: `SPEC.md` §§3.6, 4.2 and 5.3.
 
-**Every tunable is injected, never read from module constants** (decided in #2).
-Functions take a `Tuning` defaulting to `DEFAULT_TUNING`. This is what lets the dev
-panel drive the live math without making the package mutable.
+## Key decisions
 
-**Match sequence and match rules live in different places.** Round rules — the
-carry, the winner, the end condition — are in `packages/game`. The phase sequence
-is `apps/web/src/match/machine.ts`, kept pure and React-free with the clock as an
-action parameter, so **#13 can move that file to the server rather than rewrite
-it**. `use-match.ts` is the only impure half.
+- A seed makes selection reproducible; the ghost itself needs recorded or
+  simulated typing. The saved offers and line snapshots are what let an old replay
+  survive later content edits.
+- Replay v1 stores seed/setup, initial tuning/history, line snapshots, every deal,
+  keys, Specials, tuning changes, clock evaluations and phase changes. Damage, HP,
+  momentum, carry and winners are recomputed and never trusted from the recording.
+- Replay timestamps are relative to session initialization. Equal timestamps use a
+  monotonic sequence number. Decreasing time and invalid phase actions are rejected.
+- The current replay stays in memory through results. Only distinct displayed line
+  IDs from slot 0 enter `typefeud.recent-lines.v1` at results, once per session ID.
+  No keystrokes, results or user statistics are persisted.
+- The history ring contains the last three completed local sessions. Abandoned
+  sessions do not enter it. Malformed, unavailable or quota-limited storage cannot
+  block play.
+- Small-pool repetition is an explicit exception to the old absolute “never
+  repeat” wording. Playable, distinguishable choices take priority. `SPEC.md` now
+  records the exact relaxation order.
+- `packages/game` remains pure. Browser clocks, crypto randomness and localStorage
+  stay in `use-match.ts`; selection and session/replay logic accept injected data.
+- There is still no tick loop. Live play retains one timeout per round boundary.
 
-**Effects must never reach the text** (design rule 2, SPEC §6.5). The impact burst
-renders in a fixed-height band outside the typing panel's bounding box —
-structurally unable to overlap it, not merely positioned so it doesn't. Round 3
-sabotage and screen shake inherit this.
+## Current state
 
-**Imports inside internal packages carry no file extension.** Turbopack will not
-resolve `./damage.js` to `damage.ts` in a transpiled source package and the web
-build dies on the first import of `@typefeud/game`.
+The implementation and validation are complete on
+`feat/seeded-selection-replay`, which tracks the pushed remote branch. Task #6 is
+not merged into `main` yet.
 
-**Commit messages carry no tooling metadata** — no session URL, no co-author or
-generated-by line.
+Observed verification:
 
-## Known gaps, all deliberate
+- Latest `pnpm test` passed: **155 tests** total — game 97, content 26, protocol 4,
+  web 28; server has no test files.
+- Latest `pnpm typecheck` passed in all five workspaces.
+- Latest `pnpm lint` passed with no warnings.
+- The final `pnpm build` passed after the small-pool dealer adjustment.
+- An isolated headless Chromium full-match pass ran after the small-pool fix:
+  trigger `100—92`, debate `100—0`, roast `100—0`, fight `125—0`, player wins.
+  It observed one seed creation, one history write and no browser console/runtime
+  errors. The stored history contained all seven currently authored displayed IDs.
+- The browser pass used `?round=0`. Automated replay tests cover all four `?round=`
+  starting points and the `?tier=haymaker` override.
+- A reload preserved the existing history, created exactly one new seed, read the
+  history and made no premature write. A separate page with `localStorage` reads
+  and writes forced to throw still reached a playable debate with no console or
+  runtime errors.
+- The user ran the app after implementation and confirmed the manual smoke test
+  passed, including normal match progression and the new selection/history behavior.
+- The complete diff was reviewed. The only cleanup finding was two Markdown
+  trailing-space lines in this handoff; they were removed.
 
-- **No opponent.** The ghost is #7. Momentum, HP and the Special all work for
-  either slot in the engine; nothing drives slot 1. `?bot=1` only relabels the bar
-  and says so in the footer.
-- **Rounds 2 and 3 serve debate lines.** The pool holds one trigger line and six
-  debate lines; roast and fight are unwritten. `dealThree`'s `candidates()` widens
-  when a round runs dry, so a match walks end to end — it just reads as the same
-  six lines three times. #11.
-- **The trigger has no provocation.** SPEC §2.2 wants "dev_p has left you on read
-  for 4 hours" above the word. The pool has the word and not the setup, and the
-  schema has no field for arena-level framing. The word stands alone rather than
-  under an invented line, which invariant 3 forbids. #11.
-- **Intermission is a beat, not a screen.** It holds its 10 seconds showing the
-  round result, the carry — the only place the player learns why the fight opens
-  above 100 — and a countdown to the next round. The taunt exchange is #8, and the
-  space it will occupy is left empty rather than captioned.
-- **`match-end.tsx` is not the results screen.** #9 replaces the file wholesale.
-- **No KO animation, no sabotage.** SPEC §2.8 is round 3 only and unbuilt.
-- **No IME or composition handling**, and **no focus model** — a `window` keydown
-  listener types wherever you last clicked. Both belong with #10.
-- **No React rendering tests.** SPEC §7.3 puts the weight in `packages/game` and
-  rules out E2E for v1. UI is verified by hand and by driving the real reducer
-  headlessly.
+## Open questions / not done
 
-## Open questions
+- `ReplayRecord` is an internal v1 shape. There is no import/export UI, replay
+  viewer, durable storage, account history or statistics page.
+- The tuning panel records full tuning snapshots when it changes. Confirm during
+  review whether this is preferable to recording only changed fields.
+- Cross-tab history is best effort. A read occurs immediately before a write, but
+  there is no locking or account-level synchronization.
+- #7 must decide how canned ghost recordings select a compatible offered line and
+  how light timing jitter affects deterministic test fixtures.
+- The ghost is still absent. Slot 1 is only driven by test fixtures.
+- #1 CI remains open, so verification still depends on local commands.
+- #11 content remains open. Roast and fight currently widen into the six debate
+  lines, and the trigger still has one word.
+- Commit `200fb5f` (`feat: seeded selection and replay traces`) is pushed to
+  `origin/feat/seeded-selection-replay`.
+- No PR, GitHub issue update or review-board artifact was created yet.
 
-- **Does anyone ever pick anything but the safe line?** SPEC §9's named failure
-  mode, still unanswerable. Needs #7 and #11.
-- **Is the speed ceiling too low?** At 89 WPM you are already clamped, so a fast
-  typist gets no credit above 84. May be correct — it is the counterweight momentum
-  exists to provide — but untested against a range of typists. #12, and the panel
-  already drives it.
-- **Should the Special have to be armed before the line starts?** Right now you can
-  arm it mid-line and still take 1.8× on that line. Arguably it should commit you
-  before you know how the line is going.
-- **Does the pending/correct grey contrast carry?** `#E8EDF2` against `#5A6672`,
-  straight from the design tokens, with only the caret marking progress. Open since
-  #2. A design-system question if it does not read, not a code one.
-- **Lunge distance and hang time** read well as stills and are unproven in motion.
-  Milestone 5.
-- **Next.js 16.3 vs `@opennextjs/cloudflare`** — the community adapter can lag Next
-  majors. Verify before Milestone 4 and pin versions.
+## Next steps
 
-## Verification
-
-`pnpm test` (119: game 90, content 19, protocol 4, web 6), `pnpm typecheck`,
-`pnpm lint` and `pnpm build` all pass on `main` as of `81c8bbc`. **These run on
-your machine only — #1 does not exist yet.**
-
-A full match driven headlessly through the real reducer and engine at ~90 WPM ends:
-
-```
-trigger  100 — 100  winner=0
-debate   100 — 0    winner=0
-roast    100 — 0    winner=0
-fight    125 — 0    winner=0
-```
-
-`125` is SPEC §2.7's carry ceiling — 100 base + 5 trigger + 10 debate + 10 roast.
-The trigger closing level with a winner is the quick-draw working: it ended on the
-completing keystroke and its damage was discarded with the pool.
-
-#5's browser pass was done by the user, not in-session; the two things it caught —
-a dead clock and a Special prompt offered where the keyboard is not live — are
-fixed.
-
-## Still outstanding
-
-- The **GitHub Project board was never created**; the `gh` token lacks the scope.
-  `gh auth refresh -s project,read:project`.
-- The **design pass has no issue**. It would be **#19** now.
-- **Merged branches are not deleted** on the remote — `feat/typing-surface`,
-  `feat/damage-momentum-line-completion`, `feat/three-line-choice`,
-  `feat/full-match-flow` all still exist.
+1. Open the PR from `feat/seeded-selection-replay` to `main` for issue #6. Include
+   no co-author, generated-by or tooling metadata.
+2. Include the implementation summary, `pnpm test`, `pnpm typecheck`, `pnpm lint`,
+   `pnpm build`, and the browser verification in the PR description.
+3. After #6 merges, begin #7 by consuming a canned recorded trace as slot 1 input
+   through `advanceSession`; keep the ghost source behind the same event shape that
+   later multiplayer progress will replace.

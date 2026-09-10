@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Seeded selection and replay traces — TypeFeud implementation plan</title><style>
+            :root {
+                --bg: #f5f0e1; /* bone paper */
+                --paper: #fbf8ec; /* card surface, slightly lighter */
+                --paper-soft: #f1ead5; /* prompt panel */
+                --ink: #1a2e1f; /* deep forest green — primary ink */
+                --ink-soft: #5a6b5a; /* muted green-gray — secondary text */
+                --accent: #b4541a; /* terracotta — section numbers, emphasis, new modules */
+                --rule: #d8cfb4;
+                --dash: #b9b29a;
+                --tag-bg: #ece5d0;
+                --op-add: #2d5938;
+                --op-mod: #856104;
+                --op-del: #8a3320;
+            }
+            * { box-sizing: border-box; }
+            html, body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--ink);
+                font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+                font-size: 17px;
+                line-height: 1.55;
+            }
+            .page { max-width: 760px; margin: 0 auto; padding: 40px 24px 96px; }
+
+            .eyebrow {
+                font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-soft);
+            }
+            h1 {
+                font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+                font-size: 40px; line-height: 1.15;
+                margin: 6px 0 20px; font-weight: 600; color: var(--ink);
+                letter-spacing: -0.01em;
+            }
+            h2 {
+                font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+                font-size: 26px; margin: 0; font-weight: 600; color: var(--ink);
+                letter-spacing: -0.005em;
+            }
+            h3 {
+                font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+                font-size: 17px; margin: 0 0 4px; font-weight: 600; color: var(--ink);
+            }
+            p { margin: 8px 0; }
+            code {
+                font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+                font-size: 0.92em;
+            }
+
+            /* PROMPT — soft boxed panel */
+            .prompt-box {
+                background: var(--paper-soft);
+                border: 1px solid var(--rule);
+                border-radius: 10px;
+                padding: 16px 18px;
+                margin: 20px 0 36px;
+            }
+            .prompt-box .plabel {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--accent);
+                margin-bottom: 6px;
+            }
+            .prompt-box p { margin: 0; color: var(--ink); font-size: 16px; }
+
+            /* 2. HIGHLIGHT BUBBLES — flat cards */
+            .bubbles {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px; margin: 24px 0 56px;
+            }
+            .bubble {
+                background: #fff;
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                padding: 14px 16px;
+            }
+            .bubble .label {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 10px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-soft);
+            }
+            .bubble .value {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 18px; font-weight: 500;
+                margin-top: 4px; color: var(--ink);
+            }
+
+            /* SECTION */
+            section { margin: 56px 0; }
+            .section-head {
+                display: flex; align-items: center; gap: 12px;
+                margin-bottom: 6px;
+            }
+            .section-num {
+                font-family: ui-monospace, Menlo, monospace;
+                color: var(--ink-soft);
+                font-size: 11px; letter-spacing: 0.08em;
+                background: var(--tag-bg);
+                border-radius: 4px; padding: 2px 7px;
+            }
+            section > p:first-of-type { color: var(--ink-soft); margin: 4px 0 24px; }
+
+            /* 3. MILESTONES — timeline rail */
+            .timeline { margin-top: 8px; }
+            .milestone {
+                display: grid;
+                grid-template-columns: 130px 28px 1fr;
+                gap: 14px;
+                padding-bottom: 28px;
+                position: relative;
+            }
+            .milestone .when {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; letter-spacing: 0.04em;
+                color: var(--ink-soft); padding-top: 4px;
+                text-align: right;
+            }
+            .milestone .rail {
+                position: relative;
+                display: flex; justify-content: center;
+            }
+            .milestone .rail::before {
+                content: ""; position: absolute;
+                top: 0; bottom: -28px; left: 50%;
+                width: 1px; background: var(--rule);
+                transform: translateX(-0.5px);
+            }
+            .milestone:last-child .rail::before { bottom: 0; }
+            .milestone .dot {
+                position: relative; z-index: 1;
+                width: 11px; height: 11px; border-radius: 50%;
+                margin-top: 8px;
+                background: var(--op-add);
+                border: 2px solid var(--op-add);
+            }
+            .milestone.upcoming .dot {
+                background: var(--bg);
+                border: 2px solid var(--accent);
+            }
+            .milestone .body { padding-top: 2px; }
+            .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+            .tag {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px;
+                background: var(--tag-bg);
+                border: 1px solid var(--rule);
+                padding: 2px 8px; border-radius: 4px;
+                color: var(--ink);
+            }
+
+            /* 4. DATA FLOW */
+            .flow {
+                background: var(--paper);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 22px;
+                overflow-x: auto;
+            }
+            .flow svg { width: 100%; height: auto; display: block; }
+            .legend {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; color: var(--ink-soft);
+                margin-top: 12px;
+            }
+
+            /* 5. MOCKUPS */
+            .mock {
+                background: var(--paper);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 20px; margin: 16px 0;
+            }
+            .mock h3 { margin-bottom: 12px; }
+
+            /* 6. FILES */
+            .files { display: grid; grid-template-columns: 1fr; gap: 0; }
+            .file-row {
+                display: grid;
+                grid-template-columns: 80px 1fr;
+                gap: 12px; align-items: baseline;
+                border-bottom: 1px dashed var(--dash);
+                padding: 10px 0;
+            }
+            .file-op {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+            .op-add { color: var(--op-add); }
+            .op-mod { color: var(--op-mod); }
+            .op-del { color: var(--op-del); }
+            .file-path {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 14px; color: var(--ink);
+            }
+            .file-note {
+                color: var(--ink-soft);
+                font-size: 14px; margin-top: 3px; display: block;
+            }
+
+            /* 7. CODE */
+            pre.code {
+                background: var(--paper);
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                padding: 14px 16px; overflow-x: auto;
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 13px; line-height: 1.55;
+                color: var(--ink);
+            }
+            .code-caption {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 12px; color: var(--ink-soft);
+                margin: 18px 0 6px;
+            }
+            .kw { color: var(--accent); }
+            .fn { color: #2d5938; }
+            .str { color: #856104; }
+
+            /* 8. FUTURE SCOPE */
+            .future-item {
+                border-top: 1px solid var(--rule);
+                padding: 16px 0;
+            }
+            .future-item:last-child { border-bottom: 1px solid var(--rule); }
+            .future-item .meta {
+                font-family: ui-monospace, Menlo, monospace;
+                font-size: 11px; letter-spacing: 0.04em;
+                color: var(--ink-soft); margin-top: 6px;
+            }
+
+            /* SVG defaults */
+            .node { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; }
+            .node-new { fill: var(--paper); stroke: var(--accent); stroke-width: 2.5; }
+            .node-label { font-family: ui-monospace, Menlo, monospace; font-size: 12px; fill: var(--ink); }
+            .node-sub { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+            .stroke-solid { stroke: var(--ink); stroke-width: 2; fill: none; }
+            .stroke-dash { stroke: var(--ink); stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+            .edge-label { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+
+            @media (max-width: 640px) {
+                .milestone { grid-template-columns: 90px 22px 1fr; gap: 10px; }
+                h1 { font-size: 32px; }
+                h2 { font-size: 22px; }
+            }
+
+.file-path { overflow-wrap: anywhere; } .flow svg { min-width: 600px; } .mock-grid { display:grid; gap:10px; } .mock-line { border:1px solid var(--rule); padding:12px; border-radius:6px; }
+</style></head><body><main class="page"><div class="eyebrow">TypeFeud · Task #6 · Plan for review</div><h1>Seeded selection and replay traces</h1><div class="prompt-box"><div class="plabel">Prompt</div><p>Start the next task and show me the implementation plan. Explain what it records and whether this is user stats and history.</p></div><p>This feature makes a match reproducible and supplies the trace foundation for #7’s ghost opponent. It remembers recently displayed lines to improve variety. User profiles, win/loss history and a statistics screen are outside this task.</p><div class="bubbles"><div class="bubble"><div class="label">Delivery</div><div class="value">One PR</div></div><div class="bubble"><div class="label">Estimate</div><div class="value">~2 days</div></div><div class="bubble"><div class="label">Surfaces</div><div class="value">Game · content · web</div></div><div class="bubble"><div class="label">History</div><div class="value">Last 3 matches</div></div><div class="bubble"><div class="label">Dependencies</div><div class="value">None added</div></div></div><section><div class="section-head"><span class="section-num">01</span><h2>Milestones</h2></div><p>Four reviewable slices in one demoable PR. Pure helpers can land unused first; client integration supplies the visible behavior.</p><div class="timeline"><div class="milestone "><div class="when">Slice 1</div><div class="rail"><div class="dot"></div></div><div class="body"><h3>Deterministic selection</h3><p>Add an explicitly threaded PRNG state and selection policy. Given the same seed, pool, history and deal requests, both player slots receive the same deals on every run. Keep tier choices and first-character collision handling.</p><div class="tags"><span class="tag">packages/game · packages/content</span></div></div></div><div class="milestone upcoming"><div class="when">Slice 2</div><div class="rail"><div class="dot"></div></div><div class="body"><h3>Browser session and recent lines</h3><p>Initialize the real match once after browser storage is available, during the existing arena reveal. Track displayed options and persist three completed matches. Remove FIRST_DEAL and the throwaway match re-deal.</p><div class="tags"><span class="tag">apps/web/src/match · match-stage.tsx</span></div></div></div><div class="milestone upcoming"><div class="when">Slice 3</div><div class="rail"><div class="dot"></div></div><div class="body"><h3>Record and reproduce a match</h3><p>Introduce serializable input events and a shared pure round driver used by live play and replay. Capture both slots, deals, keys, Special use, tuning changes and explicit clock evaluations. Preserve match transitions in machine.ts.</p><div class="tags"><span class="tag">packages/game · apps/web/src/match</span></div></div></div><div class="milestone upcoming"><div class="when">Slice 4</div><div class="rail"><div class="dot"></div></div><div class="body"><h3>Verify and document</h3><p>Replay a full match with errors, repairs, a Special, carry and timeout, then compare the complete logical state. Run repository checks and manually verify startup, repeat avoidance, storage failure and round shortcuts. Update SPEC, TASKS and the handoff at completion.</p><div class="tags"><span class="tag">Tests · SPEC.md · docs/handoff.md</span></div></div></div></div></section><section><div class="section-head"><span class="section-num">02</span><h2>Data flow</h2></div><p>Storage and clocks stay at the browser boundary. Pure functions receive explicit inputs; replay never reads the current browser history or wall clock.</p><div class="flow"><svg viewBox="0 0 660 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Browser history and seed feed session selection. Live and replay inputs call the same pure game driver."><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1a2e1f"/></marker></defs>
+<rect class="node-new" x="20" y="20" width="240" height="60"/><text class="node-label" x="40" y="45">history.ts + session.ts</text><text class="node-sub" x="40" y="65">web · storage snapshot + seed</text>
+<rect class="node" x="380" y="20" width="260" height="60"/><text class="node-label" x="400" y="45">use-match.ts</text><text class="node-sub" x="400" y="65">web · keyboard and one-shot timers</text>
+<path class="stroke-solid" d="M260 50 H380" marker-end="url(#arrow)"/><text class="edge-label" x="280" y="40">initialize</text>
+<rect class="node-new" x="20" y="180" width="240" height="60"/><text class="node-label" x="40" y="205">selection.ts + random.ts</text><text class="node-sub" x="40" y="225">web orchestration · game PRNG</text>
+<path class="stroke-solid" d="M380 70 H320 V210 H260" marker-end="url(#arrow)"/><text class="edge-label" x="330" y="145">deal request</text>
+<rect class="node" x="20" y="340" width="240" height="60"/><text class="node-label" x="40" y="365">deal.ts → pool.ts</text><text class="node-sub" x="40" y="385">content · authored candidates</text>
+<path class="stroke-solid" d="M140 240 V340" marker-end="url(#arrow)"/><text class="edge-label" x="150" y="290">seeded picks + exclusions</text>
+<rect class="node-new" x="380" y="180" width="260" height="60"/><text class="node-label" x="400" y="205">Replay record / replay.ts</text><text class="node-sub" x="400" y="225">game · ordered input events</text>
+<path class="stroke-solid" d="M510 80 V180" marker-end="url(#arrow)"/><text class="edge-label" x="520" y="130">record inputs</text>
+<rect class="node-new" x="380" y="340" width="260" height="60"/><text class="node-label" x="400" y="365">round-driver.ts → engine.ts</text><text class="node-sub" x="400" y="385">game · shared live / replay rules</text>
+<path class="stroke-solid" d="M510 240 V340" marker-end="url(#arrow)"/><text class="edge-label" x="520" y="290">fold in sequence</text>
+<rect class="node" x="380" y="500" width="260" height="60"/><text class="node-label" x="400" y="525">machine.ts → match-stage.tsx</text><text class="node-sub" x="400" y="545">web · phases, carry, rendering</text>
+<path class="stroke-solid" d="M510 400 V500" marker-end="url(#arrow)"/><text class="edge-label" x="520" y="450">round result</text>
+</svg></div><div class="legend">Solid = synchronous calls/data flow. Dashed would mean asynchronous delivery; none is introduced. Terracotta border = new module. Engine, dealer and phase machine already exist.</div>
+<h3>Selection state</h3><p>Keep one match seed and explicit per-slot PRNG state across rounds. A slot’s deal must not consume the other slot’s stream. Remove the currently discarded opponent deal on local line completion. Advance state only when a deal is committed, never as a React render side effect. Reconcile the existing unused RoundState.rngCursor with this ownership; do not maintain two independent cursors.</p>
+<h3>Startup and persistence</h3><p>Server output and the client’s initial render both show the existing arena reveal with no dealt match yet. After mount, read validated history and create one seed using browser randomness. Initialize once, then start the reveal timer and match. Strict Mode effect re-runs must not create a second session, consume more randomness or append history twice. This explicitly handles localStorage being unavailable to the server; a seed alone cannot solve that mismatch.</p><p>Store a versioned ring of three entries containing session ID and distinct displayed line IDs for slot 0. Snapshot it once for selection. Commit at results once per session ID; invalid JSON or inaccessible storage falls back to in-memory history without blocking play. No keystrokes or stats are written to localStorage.</p>
+<h3>Replay contract</h3><p>Version the record and include seed, arena, starting round/dev overrides, initial tuning, initial selection history, and a dictionary of every dealt line’s text/tier/word count. Store all offered option IDs and explicit PRNG checkpoints, including unchosen options, so later content edits cannot silently change a replay.</p><p>Events carry a monotonic sequence number, round identity and milliseconds relative to that round. Record deals, keys including backspace and incomplete lines, Special activation, tuning updates, and clock evaluations. Capture the effective input order; equal timestamps use sequence order. Damage, HP, momentum and winners are derived, never accepted as recorded outcomes.</p><p>The round driver applies the same keystroke → tick → resolve-once → tick ordering as the live hook, including trigger quick-draw. Keep a resolution guard in driver state and clear it on a new deal. Live input and replay both use this driver. The existing phase reducer remains the match sequencer and headless full-match verification drives it too. No timer loop or networking is added.</p></section><section><div class="section-head"><span class="section-num">03</span><h2>User experience</h2></div><p>The match retains its existing layout. There is no new statistics or history screen. This schematic shows behavior only; implementation follows existing design tokens.</p><div class="mock"><h3>A · Opening the game</h3><div class="mock-line">Arena · Group chat</div><p>The existing reveal gives the browser time to load recent lines and initialize one session. No visible placeholder deal changes into a second deal.</p></div><div class="mock"><h3>B · Three choices during play</h3><div class="mock-grid"><div class="mock-line">Jab · An available authored line</div><div class="mock-line">Combo · An available authored line</div><div class="mock-line">Haymaker · An available authored line</div></div><p>All three displayed options enter this match’s seen set. A later match avoids them while eligible alternatives exist.</p></div><div class="mock"><h3>C · First visit or storage failure</h3><p>Play opens normally with an empty recent-history snapshot. Storage errors never replace the typing surface with an error screen.</p></div></section><section><div class="section-head"><span class="section-num">04</span><h2>Files</h2></div><p>Proposed module boundaries. Barrel exports and individual test files are omitted here. No files are removed; FIRST_DEAL and the re-deal effect are removed in place.</p><div class="files"><div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">packages/game/src/random.ts</span><span class="file-note">Pure seeded PRNG helpers; explicit serializable state and stable known-output tests.</span></span></div><div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">packages/game/src/replay.ts</span><span class="file-note">Versioned trace types and pure event replay; self-contained line dictionary and ordered inputs.</span></span></div><div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">packages/game/src/round-driver.ts</span><span class="file-note">Shared live/replay event application and exactly-once line resolution.</span></span></div><div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">apps/web/src/match/selection.ts</span><span class="file-note">Own per-slot seed progression, displayed sets and deal requests without React or storage.</span></span></div><div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">apps/web/src/match/history.ts</span><span class="file-note">Validate, read and write the three-match localStorage ring; pure retention helpers.</span></span></div><div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">apps/web/src/match/session.ts</span><span class="file-note">Build one initialized session from injected seed, history, flags and tuning.</span></span></div><div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">packages/content/src/deal.ts</span><span class="file-note">Separate current-match and recent-history exclusions; deterministic exhaustion behavior and injectable test pools.</span></span></div><div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">packages/game/src/types.ts</span><span class="file-note">Align seen-line meaning and rngCursor ownership with the match selection model.</span></span></div><div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">apps/web/src/match/machine.ts</span><span class="file-note">Carry session/replay state and serializable events while preserving phase transitions.</span></span></div><div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">apps/web/src/match/use-match.ts</span><span class="file-note">Replace random deals and closure actions with committed session events; record inputs and persist history at results.</span></span></div><div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">apps/web/src/components/match-stage.tsx</span><span class="file-note">Render the existing arena reveal before browser session initialization completes.</span></span></div><div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">SPEC.md · TASKS.md · docs/handoff.md</span><span class="file-note">Document reviewed exhaustion/history/replay decisions; mark completion only after validation.</span></span></div></div></section><section><div class="section-head"><span class="section-num">05</span><h2>Key code</h2></div><p>Illustrative contracts for implementation, not committed API definitions.</p><div class="code-caption">packages/content/src/deal.ts · proposed exclusion priority</div><pre class="code">// Apply within the selected candidate pool for each tier.
+// First-character compatibility remains part of the deal search.
+const fresh = candidates.filter(line =&gt;
+  !current.has(line.id) &amp;&amp; !recent.has(line.id));
+const outsideThisMatch = candidates.filter(line =&gt;
+  !current.has(line.id));
+const eligible = fresh.length ? fresh
+  : outsideThisMatch.length ? outsideThisMatch
+  : candidates; // Explicit small-pool exception; review below.
+// Pick with threaded seeded state, using stable candidate order.</pre><div class="code-caption">packages/game/src/replay.ts · illustrative event envelope</div><pre class="code">type RecordedEvent = {
+  seq: number;           // Strict total order, even at equal times.
+  round: RoundName;
+  at: number;            // Milliseconds since this round began.
+  input: RoundInput;     // key | special | deal | clock | tuning
+};
+// RoundInput includes slot where needed and full event payloads.
+// A versioned header captures seed, starting config and line data.
+// Playback calls the live round driver; it does not assign HP.
+// Unknown versions or invalid event order fail explicitly.</pre><div class="code-caption">apps/web/test/replay.test.ts · acceptance shape</div><pre class="code">const recorded = runLiveSession(script, initialConfig);
+const restored = replaySession(recorded.trace);
+expect(restored.logicalState).toEqual(recorded.logicalState);
+// Includes options, partial text, HP, momentum, Special state,
+// seen sets, PRNG state, round results and match winner.
+// Separate known-outcome assertions prevent shared bugs passing.
+// Exclude only browser absolute timestamps and UI animation state.</pre></section><section><div class="section-head"><span class="section-num">06</span><h2>Validation</h2></div><p>Prove replay equivalence and user-visible behavior, not just serialization.</p><ul><li>Known PRNG vectors, immutability, same configuration/same deals, and independent slot streams across round boundaries.</li><li>Sufficient injected pools: no current-match or three-match repeats, initial offers counted, tiers preserved and distinct first characters when feasible. Tiny pools: deterministic fallback and no empty slot.</li><li>History: retain exactly three completed sessions; duplicate finalization is a no-op; malformed, stale-version and unavailable storage recover.</li><li>Replay: full match, both player slots in fixtures, errors/backspace, mid-line Special, tuning changes, incomplete timeout line, exact-deadline input, trigger completion, KO, and equal-time ordering. Verify known HP/carry outcomes as well as final-state equality.</li><li>Manual browser pass: no hydration warnings or opening re-deal, one session under Strict Mode, round/tier shortcuts, reload after completion, blocked storage, stable typing and impact beat. No browser E2E suite.</li><li>Before submission: pnpm test, pnpm typecheck, pnpm lint, pnpm build. These are planned checks; implementation has not started.</li></ul></section><section><div class="section-head"><span class="section-num">07</span><h2>Future scope and review assumptions</h2></div><p>The following decisions are proposed, not previously approved. They are visible here so review can resolve them before code changes.</p><div class="future-item"><h3>Assumption for review · exhaustion permits repeats</h3><p>SPEC §3.6 currently promises never to repeat, but the committed pool has one trigger and six debate lines, with no roast/fight pool. Preserve playable matches: prefer lines unseen in both windows, then relax past-match exclusions, then current-match exclusions only if necessary. Keep the existing round/tier candidate fallback. Update the spec to name this exception if approved. Strict no-repeat with empty choices would require a different product decision.</p><div class="meta">Decide with · user · plan review; revisit with #11 content</div></div><div class="future-item"><h3>Assumption for review · seen means displayed</h3><p>Count all three options when presented, including the first offer of each round; do not count a pending deal until it becomes visible. Today resolveLine only records completed lines. Keep the game field and selection ledger consistent, with one authoritative match seen set per slot.</p><div class="meta">Decide with · user · plan review</div></div><div class="future-item"><h3>Assumption for review · completed matches only</h3><p>Persist slot 0 history when results are reached, once per session ID. An abandoned page does not occupy a ring entry. History is local to this browser; opponent history is empty until an explicit source arrives with multiplayer.</p><div class="meta">Decide with · user · plan review</div></div><div class="future-item"><h3>Replay is an internal artifact</h3><p>Keep the current trace in memory through results and make it available to headless tests and #7. Recording includes partial lines and Special/tuning events; a completed-line-only trace is insufficient. A replay viewer, downloadable clips, durable trace storage and account statistics remain future work.</p><div class="meta">Follow-on · #7 ghost; #9 results; milestone 6 clips</div></div><div class="future-item"><h3>Compatibility and variety</h3><p>Version the format and reject unsupported versions; text snapshots protect against pool edits but future engine-rule changes need versioned playback or migration. Prefer-unseen-tags remains a spec concern: add deterministic weighting only if it can preserve tier and first-character constraints, and test it; responseTo pairing stays phase 2.</p><div class="meta">Review during · selection implementation</div></div></section></main></body></html>

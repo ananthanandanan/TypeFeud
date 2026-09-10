@@ -28,6 +28,14 @@ import { TypingStage } from "@/components/typing-stage";
 
 export function MatchStage({ flags }: { flags: DevFlags }) {
   const match = useMatch(flags);
+  if (!match) {
+    return (
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-7 p-10">
+        <TuningPanel />
+        <ArenaReveal />
+      </main>
+    );
+  }
   const { phase, round, generation, lineOutcome, lastKeyAt, roundStartedAt } = match;
   const opponentName = flags.bot ? "GHOST" : "OPPONENT";
 
