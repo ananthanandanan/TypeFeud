@@ -4,13 +4,23 @@
  * Match decisions run through the same pure session reducer used by replay.
  * Timers are one-shot: phase boundaries, round deadline and the impact beat.
  */
-import { ARENA_REVEAL_MS, BACKSPACE, type ReplaySetup, type RoundName } from "@typefeud/game";
+import {
+  ARENA_REVEAL_MS, BACKSPACE,
+  type PlayerSlot, type ReplaySetup, type RoundName,
+} from "@typefeud/game";
 import { useEffect, useReducer, useRef } from "react";
 import type { DevFlags } from "@/dev/flags";
 import { useTuning } from "@/dev/tuning";
+import { buildGhostSchedule, ghostSeed } from "./ghost";
 import { createHistoryStore, recentLineIds } from "./history";
 import { intermissionMs, type MatchState } from "./machine";
 import { advanceSession, createSession, type SessionCommand, type SessionState } from "./session";
+
+/** Who a round-scoped timer was armed for, and against which deal. */
+interface DealGuard {
+  slot: PlayerSlot;
+  generation: number;
+}
 
 interface BrowserSession {
   session: SessionState;
@@ -20,14 +30,16 @@ interface BrowserSession {
 
 type BrowserAction =
   | { type: "initialize"; setup: ReplaySetup; now: number }
-  | { type: "command"; command: SessionCommand; now: number; round?: RoundName; generation?: number };
+  | { type: "command"; command: SessionCommand; now: number; round?: RoundName; guard?: DealGuard };
 
 function browserReducer(state: BrowserSession | null, action: BrowserAction): BrowserSession | null {
   if (action.type === "initialize") {
     return state ?? { session: createSession(action.setup), origin: action.now };
   }
   if (!state || (action.round && action.round !== state.session.match.round.round) ||
-    (action.generation !== undefined && action.generation !== state.session.match.generation)) return state;
+    (action.guard && action.guard.generation !== state.session.match.generation[action.guard.slot])) {
+    return state;
+  }
   const at = Math.max(action.now - state.origin, state.session.trace.events.at(-1)?.at ?? 0);
   const session = advanceSession(state.session, action.command, at);
   return session === state.session ? state : { ...state, session };
@@ -45,10 +57,16 @@ export function useMatch(flags: DevFlags): MatchState | null {
   const status = match?.round.status;
   const endsAt = match?.round.endsAt;
   const startedAt = match?.roundStartedAt;
-  const generation = match?.generation;
-  const outcome = match?.lineOutcome;
-  const lastKeyAt = match?.lastKeyAt;
   const origin = browser?.origin;
+  // Per slot, so the ghost's beat and the player's are the same code twice.
+  const generation = match?.generation[0];
+  const outcome = match?.lineOutcome[0];
+  const lastKeyAt = match?.lastKeyAt[0];
+  const ghostGeneration = match?.generation[1];
+  const ghostOutcome = match?.lineOutcome[1];
+  const ghostLastKeyAt = match?.lastKeyAt[1];
+  const ghostOptions = match?.round.players[1].options;
+  const seed = session?.trace.setup.seed;
 
   // Both SSR and first client render show only the existing arena reveal.
   // Storage never changes an already visible deal. Strict Mode initializes once.
@@ -107,17 +125,77 @@ export function useMatch(flags: DevFlags): MatchState | null {
     dispatch({ type: "command", command: { type: "round.end" }, round: roundName, now: performance.now() });
   }, [phase, status, roundName]);
 
+  // The player's impact beat: the finished line stays up, then three more.
   useEffect(() => {
-    if (phase !== "round" || status !== "live" || !outcome || startedAt == null || origin == null || lastKeyAt == null) return;
+    if (phase !== "round" || status !== "live" || !outcome) return;
+    if (startedAt == null || origin == null || lastKeyAt == null || generation == null) return;
     const due = origin + startedAt + lastKeyAt + tuning.impactBeatMs;
     const id = window.setTimeout(() => {
       dispatch({
         type: "command", command: { type: "deal", slot: 0 },
-        round: roundName, generation, now: performance.now(),
+        round: roundName, guard: { slot: 0, generation }, now: performance.now(),
       });
     }, Math.max(0, due - performance.now()));
     return () => window.clearTimeout(id);
   }, [phase, status, outcome, startedAt, origin, lastKeyAt, roundName, generation, tuning.impactBeatMs]);
+
+  // The ghost's, which is the same beat measured from its own last snapshot.
+  // Without it the ghost lands one line per round and then stands there.
+  useEffect(() => {
+    if (!flags.bot || phase !== "round" || status !== "live" || !ghostOutcome) return;
+    if (startedAt == null || origin == null || ghostLastKeyAt == null || ghostGeneration == null) return;
+    const due = origin + startedAt + ghostLastKeyAt + tuning.impactBeatMs;
+    const id = window.setTimeout(() => {
+      dispatch({
+        type: "command", command: { type: "deal", slot: 1 },
+        round: roundName, guard: { slot: 1, generation: ghostGeneration }, now: performance.now(),
+      });
+    }, Math.max(0, due - performance.now()));
+    return () => window.clearTimeout(id);
+  }, [flags.bot, phase, status, ghostOutcome, startedAt, origin, ghostLastKeyAt, roundName,
+    ghostGeneration, tuning.impactBeatMs]);
+
+  /**
+   * The ghost itself. One deal in, one schedule out, one timer at a time —
+   * never a tick loop (invariant 8), and never more than one pending timeout.
+   *
+   * The schedule is rebuilt from scratch whenever the deal changes, which is
+   * also what makes it correct across a round boundary: `ghostSeed` mixes the
+   * round and the deal generation, so the ghost gets a fresh line and fresh
+   * timing without any state surviving between them. A snapshot that lands
+   * after the deal it belongs to is dropped by the guard, and one that lands
+   * after the deadline is dropped by `tickRound` inside the driver.
+   */
+  useEffect(() => {
+    if (!flags.bot || phase !== "round" || status !== "live") return;
+    if (startedAt == null || origin == null || roundName == null) return;
+    if (ghostGeneration == null || !ghostOptions || seed == null) return;
+
+    const { events } = buildGhostSchedule({
+      seed: ghostSeed(seed, roundName, ghostGeneration),
+      options: ghostOptions,
+    });
+
+    let index = 0;
+    let timer = 0;
+    const arm = () => {
+      const event = events[index];
+      if (!event) return;
+      const due = origin + startedAt + event.dueAt;
+      timer = window.setTimeout(() => {
+        index += 1;
+        dispatch({
+          type: "command",
+          command: { type: "input", input: { type: "progress", slot: 1, ...event.progress } },
+          round: roundName, guard: { slot: 1, generation: ghostGeneration }, now: performance.now(),
+        });
+        arm();
+      }, Math.max(0, due - performance.now()));
+    };
+    arm();
+
+    return () => window.clearTimeout(timer);
+  }, [flags.bot, phase, status, roundName, startedAt, origin, ghostGeneration, ghostOptions, seed]);
 
   useEffect(() => {
     if (phase !== "round") return;

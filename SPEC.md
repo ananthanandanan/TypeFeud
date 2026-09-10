@@ -348,6 +348,27 @@ Typing games are unusually friendly to netcode: **no physics, no collision, and 
 4. **Derive animations from progress; never send animation events.** Client sees opponent progress cross a threshold and plays the punch. Fewer messages, fewer desync bugs.
 5. **Server owns text, clock, and outcome.** Clients never decide who won.
 
+**What a snapshot becomes (T-07).** `applyProgressSnapshot` in `packages/game`
+is the one place a snapshot re-enters the engine, and it is shared by the ghost
+and, at T-14, the socket. It is deliberately strict about what it will believe:
+a line that is not among that player's three current options is refused, so is a
+line other than the one they locked in, so is a `charIndex` past the end or an
+`errors` past the `charIndex`. A *decreasing* `charIndex` is accepted — that is
+a backspace, and rule 6 of §11 says a repair is real. Ordering is the
+transport's job, not something guessed at from the numbers.
+
+Two fields are synthesized because the wire cannot carry them, and both are safe
+for a stated reason. `typedChars` is empty: §6.2's requirement that a wrong
+character stay visible as typed is about the *local* surface, the opponent's
+characters are never rendered, and nothing in the damage path reads it.
+`wrongIndices` is a count wearing an array's clothes — `uncorrectedErrors` is a
+length, and that length is the whole of what §2.5 charges.
+
+The consequence worth naming: the opponent resolves through `resolveLine` on the
+identical path as a keystroke, so the two can never disagree about what a line
+was worth. The only difference between a ghost and a person is how the progress
+got there.
+
 ### 4.4 Wire protocol
 
 ```ts
@@ -419,6 +440,25 @@ This catches essentially every casual cheater. Revisit only if ranked play ships
 Record real progress traces, replay them as ghost opponents with light timing jitter. Match ghost skill to player's recent WPM. Do not advertise loudly.
 
 The ghost is built in Milestone 2 as a development tool and is reused as the launch bot — it is not throwaway scaffolding.
+
+**As built (T-07).** The ghost is a *source of progress snapshots*, not a typing
+simulator: `buildGhostSchedule` turns one deal into a list of `{lineId,
+charIndex, errors}` with due times, and everything downstream of it is the same
+code a live opponent will drive at T-14. It commits to one of the three lines it
+was offered, the way a player does, and types it once.
+
+A trace is normalized inter-keystroke cadence plus a WPM, which is what makes it
+independent of the line it is replayed over — the shape of the typing survives,
+the duration comes from the line's own length. Errors and repairs are part of
+the trace: a repair costs three keystrokes and no damage, an error left standing
+costs damage and the momentum meter, which is invariant 6 seen from the other
+side of the net.
+
+Skill selection is deferred. There is no store of the player's recent WPM until
+the results task, so T-07 ships three profiles near `PAR_WPM` and picks among
+them by seed. The ghost's constants live in `apps/web/src/match/ghost.ts` and
+deliberately not in `Tuning`: invariant 1 keeps `packages/game` pure, and a pure
+damage engine has no business knowing a bot exists.
 
 ---
 
@@ -549,7 +589,12 @@ pnpm dev          # turbo: web on :3000, server on :3001
 
 ### 7.2 Development tooling to build early
 
-- **`?bot=1`** — instantly start a match against a ghost, skipping the queue
+- **`?bot=1`** — instantly start a match against a ghost, skipping the queue. As
+  of T-07 this drives every round: the ghost picks a line, types it at a canned
+  human pace, lands damage, and is dealt three more after the impact beat, the
+  same as the player. Without the flag the opponent stays idle, and the HUD's
+  opponent activity strip is hidden rather than showing a still bar — an idle
+  strip would be a lie about what the other side is doing.
 - **`?round=3`** — jump straight to a round for tuning
 - **Tuning panel** (dev-only) — live-edit damage constants, timers, WPM par
 - **Two-tab local multiplayer** — open two browser tabs, both hit the local server

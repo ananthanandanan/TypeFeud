@@ -13,6 +13,14 @@
  * It holds the round-scoped view state (`lineOutcome`, `lastKeyAt`,
  * `generation`) as well as the sequence, so opening a round clears all of it in
  * one transition rather than in a chain of effects racing each other.
+ *
+ * All three are per slot. They started out as the local player's alone, but
+ * the opponent needs every one of them for the same reasons: an impact beat to
+ * wait through before their next three are dealt, a time to measure it from,
+ * and a generation to make a stale timer harmless. Indexing by slot rather
+ * than adding a second set of opponent-shaped fields is what keeps the ghost's
+ * scheduling a parameterized copy of the local one instead of a fork of it —
+ * and it is the shape #14 needs, where both sides arrive from the server.
  */
 
 import {
@@ -55,12 +63,24 @@ export interface MatchState {
    * coordinates for the HUD only. Null until the first round starts.
    */
   roundStartedAt: number | null;
-  /** what the last completed line did; cleared when the next three are dealt */
-  lineOutcome: LineOutcome | null;
-  /** ms since round start at the most recent keystroke */
-  lastKeyAt: number;
-  /** bumped by every deal — the remount key that resets the per-line clock */
-  generation: number;
+  /** per slot: what the last completed line did; cleared when the next three are dealt */
+  lineOutcome: [LineOutcome | null, LineOutcome | null];
+  /** per slot: ms since round start at that player's most recent input */
+  lastKeyAt: [number, number];
+  /**
+   * Per slot, bumped by every deal. Slot 0's is the typing surface's remount
+   * key, which is what resets the per-line clock without an effect clearing
+   * the old one; both are the guard that makes a late impact-beat timer from a
+   * previous line land on nothing.
+   */
+  generation: [number, number];
+}
+
+/** One slot of a per-slot pair, replaced without touching the other. */
+function replace<T>(pair: [T, T], slot: PlayerSlot, value: T): [T, T] {
+  const next: [T, T] = [...pair];
+  next[slot] = value;
+  return next;
 }
 
 /** One deal per player, in slot order. */
@@ -133,9 +153,9 @@ export function initialMatch(round: RoundState): MatchState {
     results: [],
     outcome: null,
     roundStartedAt: null,
-    lineOutcome: null,
-    lastKeyAt: 0,
-    generation: 0,
+    lineOutcome: [null, null],
+    lastKeyAt: [0, 0],
+    generation: [0, 0],
   };
 }
 
@@ -147,21 +167,24 @@ function starting(state: MatchState, round: RoundState, now: number): MatchState
     round,
     pending: null,
     roundStartedAt: now,
-    lineOutcome: null,
-    lastKeyAt: 0,
-    generation: state.generation + 1,
+    lineOutcome: [null, null],
+    lastKeyAt: [0, 0],
+    generation: [state.generation[0] + 1, state.generation[1] + 1],
   };
 }
 
 export type MatchAction =
   /** the arena reveal is over; play the round already built into state */
   | { type: "arena.done"; now: number }
-  /** The shared driver has applied a serializable input to this round. */
-  | { type: "round.changed"; round: RoundState; at?: number }
+  /**
+   * The shared driver has applied a serializable input to this round. `at`
+   * moves the acting player's clock; input that changed nothing omits it.
+   */
+  | { type: "round.changed"; round: RoundState; slot?: PlayerSlot; at?: number }
   /** a line landed: the round after resolution, and what the line was worth */
-  | { type: "line.resolved"; round: RoundState; outcome: LineOutcome }
+  | { type: "line.resolved"; round: RoundState; slot: PlayerSlot; outcome: LineOutcome }
   /** the impact beat is over and the next three are up */
-  | { type: "line.dealt"; round: RoundState }
+  | { type: "line.dealt"; round: RoundState; slot: PlayerSlot }
   /** the round is over — `options` are the deal for whatever comes next */
   | { type: "round.end"; options: DealtOptions; now: number; tuning?: Tuning }
   /** the beat between rounds has run its course */
@@ -185,17 +208,31 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
       const round = action.round;
       // Ignored input preserves the logical match state.
       if (round === state.round && action.at === undefined) return state;
-      return { ...state, round, lastKeyAt: action.at ?? state.lastKeyAt };
+      return {
+        ...state,
+        round,
+        lastKeyAt:
+          action.at === undefined ? state.lastKeyAt : replace(state.lastKeyAt, action.slot ?? 0, action.at),
+      };
     }
 
     case "line.resolved":
       return state.phase === "round"
-        ? { ...state, round: action.round, lineOutcome: action.outcome }
+        ? {
+            ...state,
+            round: action.round,
+            lineOutcome: replace(state.lineOutcome, action.slot, action.outcome),
+          }
         : state;
 
     case "line.dealt":
       return state.phase === "round"
-        ? { ...state, round: action.round, lineOutcome: null, generation: state.generation + 1 }
+        ? {
+            ...state,
+            round: action.round,
+            lineOutcome: replace(state.lineOutcome, action.slot, null),
+            generation: replace(state.generation, action.slot, state.generation[action.slot] + 1),
+          }
         : state;
 
     case "round.end": {

@@ -124,7 +124,7 @@ export function TypingStage({
                 : "type it · backspace repairs"}
         </span>
         <span className="tracking-[0.18em]">
-          {flags.bot ? "BOT · pending #7 · " : ""}
+          {flags.bot ? "GHOST · " : ""}
           {"` TUNING · TAB SPECIAL"}
         </span>
       </footer>

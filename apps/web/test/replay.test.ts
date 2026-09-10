@@ -59,8 +59,8 @@ describe("recording and replay", () => {
       run.send({ type: "deal", slot: 0 }, 320);
     }
     run.type(0, 0, false, false, true);
-    expect(run.state.match.lineOutcome?.specialConsumed).toBe(true);
-    expect(run.state.match.lineOutcome?.damage).toBe(11);
+    expect(run.state.match.lineOutcome[0]?.specialConsumed).toBe(true);
+    expect(run.state.match.lineOutcome[0]?.damage).toBe(11);
     run.type(1, 1, false, true);
     run.deadline();
     expect(run.state.match.round.players.map((player) => player.hp)).toEqual([89, 63]);
