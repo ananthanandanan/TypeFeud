@@ -1,9 +1,17 @@
 # Handoff
 
-Task #7 — the scripted ghost opponent — is **merged** (PR #22, `2666a28`), and
-issue #7 is closed. #6 merged alongside it (PR #21, `cf39bbc`).
+Everything from this session is **merged and on `main`**. Nothing is in flight,
+no branches are open, and the working tree is clean.
 
-**Branch:** `main`
+| Commit | What |
+|---|---|
+| `cf39bbc` | seeded line selection and replay traces (#6, PR #21) |
+| `2666a28` | scripted ghost opponent (#7, PR #22) |
+| `bb96df5` | play the ghost by default (PR #23) |
+
+Issues #6 and #7 are closed.
+
+**Branch:** `main`, synced with `origin/main`
 **Last updated:** 2026-09-11
 **Working dir:** `/Users/ananthan2k/Gitrepos/TypeFeud`
 
@@ -129,7 +137,7 @@ All run against the final state of the branch:
 Note on the browser pass: synthetic CDP keystrokes only reach the window
 listener after a click into the page. That is the harness, not the app.
 
-## Follow-up landed after the merge
+## Follow-up landed after the merge (PR #23, `bb96df5`)
 
 **The ghost is now the default.** `?bot=1` is no longer needed — a bare
 `localhost:3000` plays the real game, and `?bot=0` is what asks for an idle
@@ -161,10 +169,34 @@ answer, with a ghost as the queue-empty fallback.
   exploit. It also means any measurement taken through browser automation
   understates the ghost's speed by about 3x.
 
-## Next steps
+## How to pick up from here
 
-1. #8 or #9 — both unblocked. #9 is what unlocks adaptive ghost skill, since
-   matching the player's recent WPM needs a performance store to match against.
-2. #1 (CI) is small, unblocked and overdue; every check on #6 and #7 was run by
-   hand.
-3. #12 is the real end of Milestone 2 and needs #9 and #11 first.
+Nothing is half-finished, so this is a clean start rather than a resumption.
+
+1. **#9 — results screen** is the highest-value next task. It is unblocked, and
+   it is the one that unlocks adaptive ghost skill: matching the ghost to the
+   player's recent WPM needs a store of that WPM, which #9 is what creates.
+   #8 (taunts) is smaller and equally unblocked if a short task suits better.
+2. **#1 — CI** is small, unblocked and overdue. Every check on #6, #7 and #23 was
+   run by hand: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`,
+   `pnpm --filter @typefeud/content validate`, plus a browser pass.
+3. **#12 — tuning** is the real end of Milestone 2 and still needs #9 and #11.
+
+Before writing code, read `docs/plan/scripted-ghost-opponent.html` for how the
+opponent path is shaped — #14 replaces the ghost's data source and nothing else,
+and anything built on opponent state should keep that true.
+
+**To see the game as it stands:** `pnpm dev`, then `http://localhost:3000`. No
+flag needed any more. Useful shortcuts: `?round=2` opens at the roast, `?bot=0`
+turns the ghost off, backtick opens the tuning panel, tab arms the Special.
+
+## Verification at session close
+
+Run on `main` at `bb96df5`:
+
+- `pnpm test` — **179 passed**: game 108, web 41, content 26, protocol 4.
+- `pnpm typecheck` — passed in all five workspaces.
+- `pnpm lint` — passed, no warnings.
+- `pnpm build` — passed.
+- Browser, bare `localhost:3000` — label reads `GHOST`, the activity strip runs,
+  the ghost types and lands damage from the start of the debate.
