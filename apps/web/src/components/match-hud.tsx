@@ -14,7 +14,10 @@
  * this reason, so the interval below is not the tick loop invariant 8 forbids.
  */
 
-import { type RoundName, type RoundState } from "@typefeud/game";
+import {
+  activeLine, uncorrectedErrors,
+  type LineOutcome, type RoundName, type RoundState,
+} from "@typefeud/game";
 import { useEffect, useState } from "react";
 import { FighterBar } from "@/components/fighter-bar";
 
@@ -33,11 +36,17 @@ export function MatchHud({
   startedAt,
   opponentName,
   live,
+  opponentOutcome,
+  showOpponentActivity,
 }: {
   round: RoundState;
   /** performance.now() when this round began, or null before it has */
   startedAt: number | null;
   opponentName: string;
+  /** the opponent's last landed line, for the beat after it lands */
+  opponentOutcome: LineOutcome | null;
+  /** false with no opponent driving progress — an idle strip is a lie */
+  showOpponentActivity: boolean;
   /**
    * Whether the round is being played right now. False across the intermission,
    * where the HUD stays mounted showing the round that just ended — its clock
@@ -78,15 +87,79 @@ export function MatchHud({
         </div>
       </div>
 
-      <FighterBar
-        name={opponentName}
-        hp={them.hp}
-        max={max}
-        momentum={them.momentum}
-        specialArmed={them.specialArmed}
-        showSpecialHint={live}
-        side="opponent"
-      />
+      <div className="flex flex-col gap-2.5">
+        <FighterBar
+          name={opponentName}
+          hp={them.hp}
+          max={max}
+          momentum={them.momentum}
+          specialArmed={them.specialArmed}
+          showSpecialHint={live}
+          side="opponent"
+        />
+        {showOpponentActivity ? <OpponentActivity player={them} outcome={opponentOutcome} /> : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * That the opponent is typing, and roughly how far in. SPEC §4.3 — this is a
+ * render of progress snapshots and nothing more, which is the point: it can
+ * only ever show what multiplayer will actually have.
+ *
+ * What it deliberately does not show is their text. TypeRacer can put a car on
+ * a shared track because both players race the same passage; here the opponent
+ * holds three lines you were not dealt, and painting them would have the
+ * player reading the wrong half of the screen at speed. So the strip carries
+ * position and the HP bar above it carries the contest — the stick figures do
+ * the rest at Milestone 5 (SPEC §6.4), and this is the stand-in until they do.
+ *
+ * It lives outside the typing panel's bounding box, on the opponent's side, so
+ * rule 2 of the design system holds: nothing here can reach the player's text.
+ */
+function OpponentActivity({
+  player,
+  outcome,
+}: {
+  player: RoundState["players"][number];
+  outcome: LineOutcome | null;
+}) {
+  const line = activeLine(player);
+  const progress = player.progress;
+  const landed = outcome !== null;
+  const typed = line && progress ? Math.min(progress.charIndex, line.text.length) : 0;
+  const errors = progress ? uncorrectedErrors(progress) : 0;
+  // A landed line reads as full regardless of rounding — the beat is showing
+  // what it was worth, not where the caret got to.
+  const filled = landed ? 100 : line ? (typed / line.text.length) * 100 : 0;
+
+  return (
+    <div className="border-opponent/50 flex flex-col items-end gap-1.5 border-t-2 pt-2">
+      <span className="text-muted text-[11px] tracking-[0.18em] tabular-nums">
+        {landed ? (
+          <>
+            <span className="text-momentum font-extrabold">LANDED {outcome.damage}</span>
+            {" · RELOADING"}
+          </>
+        ) : line ? (
+          <>
+            {`TYPING · ${typed} / ${line.text.length}`}
+            {/* Never hue alone (SPEC §6.7): the count says it, not the colour. */}
+            {errors > 0 ? (
+              <span className="text-error"> · {errors} ERROR{errors > 1 ? "S" : ""}</span>
+            ) : null}
+          </>
+        ) : (
+          "CHOOSING"
+        )}
+      </span>
+      <div className="border-edge-soft bg-panel flex h-[6px] w-full flex-row-reverse border-2">
+        <div
+          className={`${landed ? "bg-momentum" : "bg-opponent"} transition-[width] duration-100 ease-linear`}
+          style={{ width: `${Math.max(0, Math.min(100, filled))}%` }}
+        />
+      </div>
     </div>
   );
 }

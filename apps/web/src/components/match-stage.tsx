@@ -37,6 +37,8 @@ export function MatchStage({ flags }: { flags: DevFlags }) {
     );
   }
   const { phase, round, generation, lineOutcome, lastKeyAt, roundStartedAt } = match;
+  // Slot 0 throughout: this is the local player's surface. The opponent's half
+  // of every one of these pairs is read by the HUD's activity strip instead.
   const opponentName = flags.bot ? "GHOST" : "OPPONENT";
 
   return (
@@ -51,6 +53,8 @@ export function MatchStage({ flags }: { flags: DevFlags }) {
           startedAt={roundStartedAt}
           opponentName={opponentName}
           live={phase === "round"}
+          opponentOutcome={lineOutcome[1]}
+          showOpponentActivity={flags.bot && phase === "round"}
         />
       ) : null}
 
@@ -59,10 +63,10 @@ export function MatchStage({ flags }: { flags: DevFlags }) {
           <TriggerRound round={round} />
         ) : (
           <TypingStage
-            key={generation}
+            key={generation[0]}
             round={round}
-            outcome={lineOutcome}
-            lastKeyAt={lastKeyAt}
+            outcome={lineOutcome[0]}
+            lastKeyAt={lastKeyAt[0]}
             flags={flags}
           />
         )

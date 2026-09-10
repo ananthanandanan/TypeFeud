@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scripted ghost opponent — Implementation plan</title>
+    <style>
+      :root {
+        --bg: #f5f0e1;
+        --paper: #fbf8ec;
+        --paper-soft: #f1ead5;
+        --ink: #1a2e1f;
+        --ink-soft: #5a6b5a;
+        --accent: #b4541a;
+        --rule: #d8cfb4;
+        --dash: #b9b29a;
+        --tag-bg: #ece5d0;
+        --op-add: #2d5938;
+        --op-mod: #856104;
+        --op-del: #8a3320;
+        --you: #1e79b8;
+        --ghost: #dc7039;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        font-size: 17px;
+        line-height: 1.55;
+      }
+      .page { max-width: 820px; margin: 0 auto; padding: 40px 24px 96px; }
+      .eyebrow, .label, .plabel, .when, .tag, .file-op, .file-path,
+      .section-num, .legend, .code-caption, .meta, .game-label, .game-value {
+        font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      }
+      .eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+      h1 { font-size: 40px; line-height: 1.15; margin: 6px 0 20px; font-weight: 600; letter-spacing: -0.01em; }
+      h2 { font-size: 26px; margin: 0; font-weight: 600; }
+      h3 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+      p { margin: 8px 0; }
+      code { font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 0.92em; }
+      .prompt-box { background: var(--paper-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; margin: 20px 0 36px; }
+      .prompt-box .plabel { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+      .prompt-box p { margin: 0; font-size: 16px; }
+      .bubbles { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; margin: 24px 0 56px; }
+      .bubble { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; }
+      .bubble .label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+      .bubble .value { font-family: ui-monospace, Menlo, monospace; font-size: 17px; font-weight: 500; margin-top: 4px; }
+      section { margin: 56px 0; }
+      .section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+      .section-num { color: var(--ink-soft); font-size: 11px; letter-spacing: 0.08em; background: var(--tag-bg); border-radius: 4px; padding: 2px 7px; }
+      section > p:first-of-type { color: var(--ink-soft); margin: 4px 0 24px; }
+      .timeline { margin-top: 8px; }
+      .milestone { display: grid; grid-template-columns: 130px 28px 1fr; gap: 14px; padding-bottom: 28px; position: relative; }
+      .milestone .when { font-size: 12px; letter-spacing: 0.04em; color: var(--ink-soft); padding-top: 4px; text-align: right; }
+      .milestone .rail { position: relative; display: flex; justify-content: center; }
+      .milestone .rail::before { content: ""; position: absolute; top: 0; bottom: -28px; left: 50%; width: 1px; background: var(--rule); transform: translateX(-0.5px); }
+      .milestone:last-child .rail::before { bottom: 0; }
+      .milestone .dot { position: relative; z-index: 1; width: 11px; height: 11px; border-radius: 50%; margin-top: 8px; background: var(--op-add); border: 2px solid var(--op-add); }
+      .milestone.upcoming .dot { background: var(--bg); border: 2px solid var(--accent); }
+      .milestone .body { padding-top: 2px; }
+      .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+      .tag { font-size: 11px; background: var(--tag-bg); border: 1px solid var(--rule); padding: 2px 8px; border-radius: 4px; }
+      .flow { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 22px; overflow-x: auto; }
+      .flow svg { width: 100%; height: auto; display: block; }
+      .legend { font-size: 12px; color: var(--ink-soft); margin-top: 12px; }
+      .node { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; }
+      .node-new { fill: var(--paper); stroke: var(--accent); stroke-width: 2.5; }
+      .node-label { font-family: ui-monospace, Menlo, monospace; font-size: 12px; fill: var(--ink); }
+      .node-sub { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+      .stroke-solid { stroke: var(--ink); stroke-width: 2; fill: none; }
+      .stroke-dash { stroke: var(--ink); stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+      .edge-label { font-family: ui-monospace, Menlo, monospace; font-size: 10px; fill: var(--ink-soft); }
+      .mock { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; margin: 16px 0; }
+      .mock h3 { margin-bottom: 12px; }
+      .game { background: #11171d; color: #edf1f3; border: 2px solid #2c3a42; padding: 18px; font-family: ui-monospace, Menlo, monospace; }
+      .game-top { display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; align-items: start; }
+      .fighter.right { text-align: right; }
+      .game-label { color: #9daab2; font-size: 10px; letter-spacing: 0.18em; }
+      .game-value { font-size: 16px; font-weight: 700; }
+      .hp { height: 8px; background: #29333a; margin-top: 7px; }
+      .hp > span { display: block; height: 100%; }
+      .you { background: var(--you); width: 74%; }
+      .them { background: var(--ghost); width: 58%; margin-left: auto; }
+      .clock { text-align: center; font-size: 28px; font-weight: 800; color: #f5c94c; }
+      .ghost-progress { margin: 16px 0 22px auto; width: 47%; border-top: 2px solid var(--ghost); padding-top: 8px; text-align: right; }
+      .ghost-progress .track { height: 5px; background: #29333a; margin-top: 7px; }
+      .ghost-progress .track span { display: block; width: 62%; height: 100%; background: var(--ghost); }
+      .typing { border: 2px solid #41515b; padding: 18px; font-family: Georgia, serif; font-size: 20px; }
+      .typed { color: #edf1f3; }.pending { color: #66747d; }.wrong { color: #ef5b5b; text-decoration: underline; }
+      .files { display: grid; grid-template-columns: 1fr; }
+      .file-row { display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: baseline; border-bottom: 1px dashed var(--dash); padding: 10px 0; }
+      .file-op { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .op-add { color: var(--op-add); }.op-mod { color: var(--op-mod); }.op-del { color: var(--op-del); }
+      .file-path { font-size: 14px; }
+      .file-note { color: var(--ink-soft); font-size: 14px; margin-top: 3px; display: block; }
+      pre.code { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.55; color: var(--ink); }
+      .code-caption { font-size: 12px; color: var(--ink-soft); margin: 18px 0 6px; }
+      .kw { color: var(--accent); }.fn { color: #2d5938; }.str { color: #856104; }
+      .future-item { border-top: 1px solid var(--rule); padding: 16px 0; }
+      .future-item:last-child { border-bottom: 1px solid var(--rule); }
+      .future-item .meta { font-size: 11px; letter-spacing: 0.04em; color: var(--ink-soft); margin-top: 6px; }
+      @media (max-width: 640px) {
+        .milestone { grid-template-columns: 88px 22px 1fr; gap: 10px; }
+        h1 { font-size: 32px; }
+        h2 { font-size: 22px; }
+        .game-top { grid-template-columns: 1fr; }
+        .clock { order: -1; }
+        .ghost-progress { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="eyebrow">Implementation plan · TypeFeud</div>
+      <h1>Scripted ghost opponent</h1>
+
+      <div class="prompt-box">
+        <div class="plabel">Prompt</div>
+        <p>Move on to task #7: make the ghost a real opponent that types from canned human timing data, affects the match, and uses the opponent-progress shape that live multiplayer will later replace.</p>
+      </div>
+
+      <div class="bubbles">
+        <div class="bubble"><div class="label">Task</div><div class="value">T-07 · #7</div></div>
+        <div class="bubble"><div class="label">Effort</div><div class="value">1–2 days</div></div>
+        <div class="bubble"><div class="label">New modules</div><div class="value">3 + tests</div></div>
+        <div class="bubble"><div class="label">Main surface</div><div class="value">game + web</div></div>
+        <div class="bubble"><div class="label">Entry flag</div><div class="value">?bot=1</div></div>
+      </div>
+
+      <section>
+        <div class="section-head"><span class="section-num">01</span><h2>Milestones</h2></div>
+        <p>Build the shared opponent-progress path first, then place a deterministic canned source behind it and connect that source to the existing match lifecycle.</p>
+
+        <div class="timeline">
+          <div class="milestone">
+            <div class="when">Slice 1</div><div class="rail"><div class="dot"></div></div>
+            <div class="body">
+              <h3>Accept opponent progress in the engine</h3>
+              <p>Add a pure progress-snapshot transition for <code>{lineId, charIndex, errors}</code>. It selects only a currently offered line, keeps the first-seen start time, rejects impossible snapshots, and resolves a completed line once through the existing damage path. <strong>As built:</strong> a snapshot that moves <code>charIndex</code> backwards is <em>not</em> rejected — that is a backspace, it is indistinguishable from a stale packet, and invariant 6 says the repair is the real one. Ordering stays the transport's job. Snapshot-built progress carries <code>typedChars: []</code> — the wire shape has no keys, so it cannot satisfy the <code>typedChars.length === charIndex</code> contract in <code>types.ts</code>. That is safe because <code>resolveLine</code> reads only <code>charIndex</code>, <code>wrongIndices.length</code> and <code>startedAt</code>, and nothing renders opponent characters — both facts are stated in the type and asserted in the tests.</p>
+              <div class="tags"><span class="tag">packages/game</span><span class="tag">deadline first</span><span class="tag">replay-safe</span></div>
+            </div>
+          </div>
+          <div class="milestone upcoming">
+            <div class="when">Slice 2</div><div class="rail"><div class="dot"></div></div>
+            <div class="body">
+              <h3>Build the canned ghost source</h3>
+              <p>Store a small set of normalized human timing traces. Choose an offered line deterministically, map the trace to its length, and add light seeded jitter. The result is a timed list of protocol-shaped progress snapshots, not synthetic key events.</p>
+              <div class="tags"><span class="tag">apps/web/src/match/ghost.ts</span><span class="tag">seeded jitter</span></div>
+            </div>
+          </div>
+          <div class="milestone upcoming">
+            <div class="when">Slice 3</div><div class="rail"><div class="dot"></div></div>
+            <div class="body">
+              <h3>Give the opponent its own round-scoped view state</h3>
+              <p><code>MatchState</code> holds <code>lineOutcome</code>, <code>lastKeyAt</code> and
+              <code>generation</code> for slot&nbsp;0 only, and <code>session.ts</code> raises
+              <code>line.resolved</code> behind an <code>input.slot === 0</code> guard. Mirror all three for the
+              opponent before anything tries to schedule or display a ghost line — the impact-beat timer and the
+              activity strip both read them, and neither can be built until they exist.</p>
+              <div class="tags"><span class="tag">machine.ts</span><span class="tag">session.ts</span><span class="tag">prerequisite</span><span class="tag">built as per-slot pairs</span></div>
+            </div>
+          </div>
+          <div class="milestone upcoming">
+            <div class="when">Slice 4</div><div class="rail"><div class="dot"></div></div>
+            <div class="body">
+              <h3>Drive every round under <code>?bot=1</code></h3>
+              <p>Schedule one next ghost event at a time and feed it into <code>advanceSession</code>. The existing impact-beat effect cannot be reused: it dispatches a literal <code>{ slot: 0 }</code> deal and is keyed on slot-0 <code>lineOutcome</code> and <code>lastKeyAt</code>. Add a parallel effect reading the opponent state from slice&nbsp;3, then deal slot&nbsp;1 and rebuild the schedule when the round or deal generation changes. Phase and generation guards make stale timers harmless.</p>
+              <div class="tags"><span class="tag">use-match.ts</span><span class="tag">no tick loop</span><span class="tag">all four rounds</span></div>
+            </div>
+          </div>
+          <div class="milestone upcoming">
+            <div class="when">Slice 5</div><div class="rail"><div class="dot"></div></div>
+            <div class="body">
+              <h3>Show activity and prove determinism</h3>
+              <p>Show a compact ghost progress readout near the opponent HUD without revealing or covering the player’s text. Test wins, losses, errors, refreshes, deadlines, replay equality, identical seeds, and different jitter seeds. Finish with the full repository checks and a browser match.</p>
+              <div class="tags"><span class="tag">match-hud.tsx</span><span class="tag">Vitest</span><span class="tag">manual smoke test</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head"><span class="section-num">02</span><h2>Data flow</h2></div>
+        <p>Solid lines are pure synchronous state transitions. Dashed lines are scheduled browser events. Every applied snapshot is also captured by the existing replay record.</p>
+        <div class="flow">
+          <svg viewBox="0 0 720 430" xmlns="http://www.w3.org/2000/svg" aria-label="Scripted ghost data flow">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1a2e1f" /></marker>
+            </defs>
+            <rect class="node-new" x="20" y="30" width="180" height="62" />
+            <text class="node-label" x="110" y="58" text-anchor="middle">canned timing traces</text>
+            <text class="node-sub" x="110" y="76" text-anchor="middle">normalized human samples</text>
+
+            <rect class="node-new" x="270" y="30" width="180" height="62" />
+            <text class="node-label" x="360" y="58" text-anchor="middle">buildGhostSchedule</text>
+            <text class="node-sub" x="360" y="76" text-anchor="middle">offered line + seeded jitter</text>
+
+            <rect class="node" x="520" y="30" width="180" height="62" />
+            <text class="node-label" x="610" y="58" text-anchor="middle">next-event effect</text>
+            <text class="node-sub" x="610" y="76" text-anchor="middle">browser boundary</text>
+
+            <path class="stroke-solid" d="M200 61 L270 61" marker-end="url(#arrow)" />
+            <text class="edge-label" x="235" y="53" text-anchor="middle">compile</text>
+            <path class="stroke-solid" d="M450 61 L520 61" marker-end="url(#arrow)" />
+            <text class="edge-label" x="485" y="53" text-anchor="middle">plan</text>
+
+            <rect class="node" x="270" y="176" width="180" height="66" />
+            <text class="node-label" x="360" y="204" text-anchor="middle">advanceSession</text>
+            <text class="node-sub" x="360" y="222" text-anchor="middle">ordered event + replay trace</text>
+
+            <path class="stroke-dash" d="M610 92 L610 136 L450 209" marker-end="url(#arrow)" />
+            <text class="edge-label" x="552" y="145" text-anchor="middle">snapshot at due time</text>
+
+            <rect class="node-new" x="20" y="176" width="180" height="66" />
+            <text class="node-label" x="110" y="204" text-anchor="middle">socket source · T-14</text>
+            <text class="node-sub" x="110" y="222" text-anchor="middle">future replacement</text>
+            <path class="stroke-dash" d="M200 209 L270 209" marker-end="url(#arrow)" />
+            <text class="edge-label" x="235" y="200" text-anchor="middle">same shape</text>
+
+            <rect class="node-new" x="270" y="322" width="180" height="66" />
+            <text class="node-label" x="360" y="350" text-anchor="middle">applyProgressSnapshot</text>
+            <text class="node-sub" x="360" y="368" text-anchor="middle">packages/game</text>
+            <path class="stroke-solid" d="M360 242 L360 322" marker-end="url(#arrow)" />
+            <text class="edge-label" x="405" y="285">drive slot 1</text>
+
+            <rect class="node" x="520" y="322" width="180" height="66" />
+            <text class="node-label" x="610" y="350" text-anchor="middle">MatchState + UI</text>
+            <text class="node-sub" x="610" y="368" text-anchor="middle">HP · progress · outcome</text>
+            <path class="stroke-solid" d="M450 355 L520 355" marker-end="url(#arrow)" />
+            <text class="edge-label" x="485" y="346" text-anchor="middle">render</text>
+          </svg>
+        </div>
+        <div class="legend">Terracotta border = new module. The future socket path is shown only to prove the boundary; it is not implemented in this task.</div>
+      </section>
+
+      <section>
+        <div class="section-head"><span class="section-num">03</span><h2>Mockups</h2></div>
+        <p>The only new visual is a restrained opponent activity strip. It confirms the ghost is typing while preserving the player’s typing panel as the main focus.</p>
+        <div class="future-item" style="border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-bottom:16px;">
+          <h3>Why a strip and not a racer</h3>
+          <p>TypeRacer answers “where is my opponent” with a car whose <em>position is the progress</em>. TypeFeud’s
+          equivalent is the opponent’s stick figure, and it answers a different question: progress crossing a threshold
+          plays a punch, and the thing that moves along the track is <strong>HP</strong>, not a position marker
+          (SPEC §4.3, invariant 4 — derive animation from progress, never send animation events). Position on screen is
+          already spoken for: you are always left, the opponent always right, which is rule 1 of the design system.</p>
+          <p>So the figure carries presence and the HP bar carries the race. Neither exists yet in motion — the figure
+          states are Milestone 5 — which leaves this task with no continuous signal that the ghost is alive between
+          hits. The strip fills exactly that hole. It is a legible stand-in, not a permanent fixture, and it is the
+          one piece of this task the art milestone is free to delete.</p>
+          <div class="meta">Figure states deferred to Milestone 5 · SPEC §6.4</div>
+        </div>
+        <div class="mock">
+          <h3>A · Live round against the ghost</h3>
+          <div class="game">
+            <div class="game-top">
+              <div class="fighter"><div class="game-label">YOU</div><div class="game-value">74 HP</div><div class="hp"><span class="you"></span></div></div>
+              <div><div class="game-label" style="text-align:center">THE ROAST</div><div class="clock">0:28</div></div>
+              <div class="fighter right"><div class="game-label">GHOST</div><div class="game-value">58 HP</div><div class="hp"><span class="them"></span></div></div>
+            </div>
+            <div class="ghost-progress">
+              <div class="game-label">GHOST TYPING · 18 / 29 · 1 ERROR</div>
+              <div class="track"><span></span></div>
+            </div>
+            <div class="typing"><span class="typed">That take has the structural </span><span class="wrong">i</span><span class="pending">ntegrity of wet cardboard.</span></div>
+          </div>
+        </div>
+        <div class="mock">
+          <h3>B · Between ghost lines</h3>
+          <div class="game">
+            <div class="ghost-progress" style="margin-top:0"><div class="game-label">GHOST LANDED 11 DAMAGE · RELOADING</div><div class="track"><span style="width:100%"></span></div></div>
+            <div class="game-label">The existing impact beat stays in charge of when fresh options appear.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head"><span class="section-num">04</span><h2>Files</h2></div>
+        <p>The engine gains one generic opponent-input primitive. Ghost choice and browser scheduling stay in the web app, while the protocol supplies the shared snapshot type.</p>
+        <div class="files">
+          <div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">packages/game/src/opponent-progress.ts</span><span class="file-note">Purely applies validated snapshot progress to an offered line while preserving engine invariants.</span></span></div>
+          <div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">packages/game/test/opponent-progress.test.ts</span><span class="file-note">Covers selection, errors, regression rejection, deadline ordering, completion and resolve-once behavior.</span></span></div>
+          <div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">apps/web/src/match/ghost.ts</span><span class="file-note">Owns canned traces, deterministic line choice, seeded jitter and schedule construction.</span></span></div>
+          <div class="file-row"><span class="file-op op-add">add</span><span><span class="file-path">apps/web/test/ghost.test.ts</span><span class="file-note">Proves fixed-seed schedules, legal offered lines, refreshes, full matches and replay equality.</span></span></div>
+          <div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">packages/protocol/src/index.ts</span><span class="file-note">Extracts the existing progress payload into a reusable schema and TypeScript type.</span></span></div>
+          <div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">packages/game/src/{round-driver,index}.ts</span><span class="file-note">Routes snapshot input through deadline checks, completion resolution and public exports.</span></span></div>
+          <div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">apps/web/src/match/machine.ts</span><span class="file-note">Mirrors <code>lineOutcome</code>, <code>lastKeyAt</code> and <code>generation</code> for the opponent so the ghost has an impact beat and a readout of its own.</span></span></div>
+          <div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">apps/web/src/match/{session,use-match}.ts</span><span class="file-note">Lifts the <code>input.slot === 0</code> guard on <code>line.resolved</code>, records ghost snapshots, and schedules the next one only when <code>?bot=1</code> is active.</span></span></div>
+          <div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">apps/web/src/components/{match-hud,typing-stage}.tsx</span><span class="file-note">Adds the opponent activity strip and removes the “pending #7” marker.</span></span></div>
+          <div class="file-row"><span class="file-op op-mod">update</span><span><span class="file-path">SPEC.md · TASKS.md · docs/handoff.md</span><span class="file-note">Records the final snapshot contract, bot behavior, verification and task status.</span></span></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head"><span class="section-num">05</span><h2>Key code</h2></div>
+        <p>These contracts keep the ghost useful for multiplayer and preserve deterministic replay.</p>
+
+        <div class="code-caption">packages/protocol/src/index.ts</div>
+        <pre class="code"><span class="kw">export const</span> progressSnapshotSchema = z.object({
+  lineId: z.string(),
+  charIndex: z.number().int().nonnegative(),
+  errors: z.number().int().nonnegative(),
+});
+
+<span class="kw">export type</span> ProgressSnapshot = z.infer&lt;<span class="kw">typeof</span> progressSnapshotSchema&gt;;</pre>
+
+        <div class="code-caption">packages/game/src/round-driver.ts</div>
+        <pre class="code"><span class="kw">export type</span> RoundInput =
+  | { type: <span class="str">"progress"</span>; slot: PlayerSlot; lineId: string; charIndex: number; errors: number }
+  | <span class="comment">/* existing key, special, clock and deal inputs */</span>;
+
+<span class="comment">// tickRound still runs first. A snapshot at or after the deadline cannot land damage.</span>
+<span class="kw">case</span> <span class="str">"progress"</span>:
+  round = <span class="fn">applyProgressSnapshot</span>(round, input, at);
+  <span class="comment">// completion uses resolveLine once, exactly like local input</span></pre>
+
+        <div class="code-caption">apps/web/src/match/ghost.ts</div>
+        <pre class="code"><span class="kw">export interface</span> TimedGhostSnapshot {
+  dueAt: number;
+  progress: ProgressSnapshot;
+}
+
+<span class="kw">export function</span> <span class="fn">ghostSeed</span>(seed: number, round: RoundName, generation: number): number;
+
+<span class="kw">export function</span> <span class="fn">buildGhostSchedule</span>(input: {
+  seed: number;
+  options: readonly [Line, Line, Line];
+}): { line: Line; trace: GhostTrace; events: TimedGhostSnapshot[] };
+
+<span class="comment">// Same seed + offers = same line, timing and errors.</span>
+<span class="comment">// Replay records the effective snapshots, so playback needs no ghost source.</span></pre>
+        <p><strong>As built:</strong> the seed is <em>derived</em> from the deal rather than threaded
+        through as a random cursor the way <code>selectOptions</code> does it. A React effect may build
+        the same schedule twice — Strict Mode does exactly this — and a carried cursor would quietly
+        produce a different ghost the second time.</p>
+      </section>
+
+      <section>
+        <div class="section-head"><span class="section-num">06</span><h2>Future scope</h2></div>
+        <p>This task creates a credible fixed-skill development opponent and the replacement boundary. Matchmaking and skill adaptation remain later work.</p>
+        <div class="future-item">
+          <h3>Adaptive ghost skill</h3>
+          <p>The launch bot should match the player’s recent WPM. Task #7 has no user-performance store yet, so it ships one moderate canned profile. The results/statistics task can add recent WPM and select among slow, medium and fast profiles without changing the stream consumer.</p>
+          <div class="meta">Deferred until player performance data exists · SPEC §4.8</div>
+        </div>
+        <div class="future-item">
+          <h3>Live socket source</h3>
+          <p>Task #14 will validate <code>opponent.progress</code> messages and dispatch the same payload currently produced by the ghost. The server remains authoritative for damage and outcomes in multiplayer.</p>
+          <div class="meta">Deferred to T-14 · no WebSocket work in T-07</div>
+        </div>
+        <div class="future-item">
+          <h3>Activation outside the dev flag</h3>
+          <p>For this task, <code>?bot=1</code> enables the ghost and normal local play keeps its current behavior. Queue fallback after the wait threshold belongs to matchmaking.</p>
+          <div class="meta">Deferred to Milestone 4 queue fallback</div>
+        </div>
+        <div class="future-item">
+          <h3>Trace authoring pipeline</h3>
+          <p>The first traces are committed fixtures. A recorder and a larger reviewed trace library can arrive with content tooling; runtime generation and external services are unnecessary.</p>
+          <div class="meta">Deferred until trace variety becomes a tuning constraint</div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
