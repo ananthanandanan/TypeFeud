@@ -1,19 +1,25 @@
 # Handoff
 
-Task #7 — the scripted ghost opponent — is implemented and fully verified on
-`feat/scripted-ghost`. It is not committed yet.
+Task #7 — the scripted ghost opponent — is **merged** (PR #22, `2666a28`), and
+issue #7 is closed. #6 merged alongside it (PR #21, `cf39bbc`).
 
-**Branch:** `feat/scripted-ghost`
+**Branch:** `main`
 **Last updated:** 2026-09-11
 **Working dir:** `/Users/ananthan2k/Gitrepos/TypeFeud`
 
 ## Where the project is
 
 **Milestone 1 is done and Milestone 2 is past halfway.** #2, #3, #4 and #5 are
-merged (PRs #15–#18). #6 is committed as `200fb5f` on `feat/seeded-selection-replay`
-and still unmerged. #7 is what this branch adds, and it is the one that turns the
-flow into a contest: a full match now has an opponent that types, lands damage,
-and takes rounds off you.
+merged (PRs #15–#18). #6 and #7 are merged. #7 is the one that turns the flow into a
+contest: a full match now has an opponent that types, lands damage, and takes
+rounds off you.
+
+**Merge note worth remembering.** PR #20 (#7) was opened against
+`feat/seeded-selection-replay` as a stacked PR. #21 and #20 were then merged 29
+seconds apart, before GitHub's auto-retarget fired, so #20 landed on the feature
+branch rather than `main` and issue #7 stayed open. PR #22 cherry-picked the same
+commit onto `main` to fix it. If a PR is ever stacked again, merge the base and
+**confirm the retarget** before merging the child.
 
 **The next coding task is [#8 — intermission and taunts](https://github.com/ananthanandanan/TypeFeud/issues/8)**
 or [#9 — results](https://github.com/ananthanandanan/TypeFeud/issues/9), both
@@ -123,6 +129,15 @@ All run against the final state of the branch:
 Note on the browser pass: synthetic CDP keystrokes only reach the window
 listener after a click into the page. That is the harness, not the app.
 
+## Follow-up landed after the merge
+
+**The ghost is now the default.** `?bot=1` is no longer needed — a bare
+`localhost:3000` plays the real game, and `?bot=0` is what asks for an idle
+opponent. The old default was a fight against a corpse, which reads as broken
+rather than as unimplemented, and it cost a round of debugging to discover that
+"no damage" simply meant "no flag". Matchmaking (Milestone 4) still owns the real
+answer, with a ghost as the queue-empty fallback.
+
 ## Open questions / not done
 
 - **Nothing tunes the ghost yet.** It knocks out an idle player in roughly a third
@@ -137,15 +152,19 @@ listener after a click into the page. That is the harness, not the app.
   want to reach them from the tuning panel, which is a real question to answer
   then, not now.
 - **No stick figures, no punch animation.** M5.
-- **#6 is still unmerged**, and this branch does not depend on it being merged
-  first, but the PRs should go in order.
 - **#1 CI is still open**, so all of the above was run by hand.
-- Nothing is committed on this branch yet; `docs/plan/scripted-ghost-opponent.html`
-  is still untracked.
+- **Background tabs throttle the ghost.** Chrome caps `setTimeout` at roughly
+  1/sec in a hidden tab, and the ghost is timer-driven, so it nearly stops when
+  the tab is not visible — while the round deadline, being absolute, keeps
+  running. Tabbing away is therefore a way to stall the opponent without stalling
+  the clock. Harmless in single-player, worth closing before #14 makes it an
+  exploit. It also means any measurement taken through browser automation
+  understates the ghost's speed by about 3x.
 
 ## Next steps
 
-1. Commit `feat/scripted-ghost` and open the PR for #7. No co-author or tooling
-   metadata in the message.
-2. Land #6 first if it is still open, then #7.
-3. Then #8 or #9 — both unblocked, and #9 is what unlocks adaptive ghost skill.
+1. #8 or #9 — both unblocked. #9 is what unlocks adaptive ghost skill, since
+   matching the player's recent WPM needs a performance store to match against.
+2. #1 (CI) is small, unblocked and overdue; every check on #6 and #7 was run by
+   hand.
+3. #12 is the real end of Milestone 2 and needs #9 and #11 first.

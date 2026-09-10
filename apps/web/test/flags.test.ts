@@ -26,6 +26,10 @@ describe("parseDevFlags", () => {
     expect(parseDevFlags({ bot: "1" }).bot).toBe(true);
     expect(parseDevFlags({ bot: "true" }).bot).toBe(true);
     expect(parseDevFlags({ bot: "0" }).bot).toBe(false);
+    expect(parseDevFlags({ bot: "false" }).bot).toBe(false);
+    // The ghost is the default since #7 — a bare URL plays the real game, and
+    // an idle opponent has to be asked for.
+    expect(parseDevFlags({}).bot).toBe(true);
   });
 
   it("takes the first value when a flag is repeated", () => {
