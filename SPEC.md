@@ -159,6 +159,13 @@ Use sparingly. Round 3 only, cooldown of 8s. Over-application makes the game fee
 
 Gives the player a voice with **zero moderation surface** and gives the losing player something to do besides wait.
 
+The first matching character locks one of the three options, using the same
+case-insensitive choice and verbatim typed character as §2.3. Wrong characters
+advance and can be repaired with backspace; only completing the canned line sends
+it. A player sends at most one per intermission. Replays record the completed
+taunt ID and text, not raw intermission keystrokes; multiplayer sends only the ID
+already defined by `taunt.send` in §4.4.
+
 ---
 
 ## 3. Content System
@@ -237,8 +244,10 @@ Backlog: Comment Section, Courtroom, Parents' Evening, Group Project.
   Pending intermission offers count only when the next round becomes visible.
 - Exclude this match's displayed lines and the player's last three completed
   matches. Snapshot recent history at startup; persist distinct local-player line
-  IDs at results in `typefeud.recent-lines.v1`, once per session ID. Abandoned
-  sessions do not enter the ring. No database, scores or keystrokes are stored there.
+  IDs and rounded match WPM at results in `typefeud.recent-lines.v1`, once per
+  session ID. Abandoned sessions do not enter the ring. WPM is retained so the
+  launch ghost can later select a nearby profile; no database or keystrokes are
+  involved.
 - **Small-pool exception:** when eligible lines cannot fill a tier or cannot form
   three distinct first characters, relax recent-match exclusions first, then
   current-match exclusions. Prefer fresher candidates within each relaxed search.
@@ -564,6 +573,15 @@ Sabotage, screen shake, and crowd reactions must never obscure the player's own 
 ### 6.6 Results screen
 
 Not a stats dump. Lead with the clip. Then WPM / accuracy / biggest hit. **Rematch button large and centred** — it should be the obvious next action.
+
+Until clip playback/export ships in Milestone 6, the leading reel is an honest
+still of the player's biggest hit rather than a fake video control. Result WPM is
+gross speed across completed lines, measured over active line-typing time;
+decision time between lines is excluded. Accuracy is completed characters minus
+final uncorrected errors, divided by completed characters — repaired errors cost
+time, as they do during play. Biggest hit is the highest resolved damage event.
+All three are folded through the deterministic session reducer and reproduced by
+replay. Rematch creates a fresh session and seed while retaining recent history.
 
 ### 6.7 Accessibility
 

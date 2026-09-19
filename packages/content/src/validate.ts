@@ -1,5 +1,10 @@
 import { TIER_WORD_BOUNDS } from "@typefeud/game";
-import { contentPoolSchema, type ContentLine, type ContentPool } from "./schema";
+import {
+  contentPoolSchema,
+  tauntPoolSchema,
+  type ContentLine,
+  type ContentPool,
+} from "./schema";
 
 export interface ValidationIssue {
   lineId: string;
@@ -43,6 +48,34 @@ export function validatePool(raw: unknown): ValidationIssue[] {
     issues.push(...validateLine(line));
   }
 
+  return issues;
+}
+
+export function validateTaunts(raw: unknown): ValidationIssue[] {
+  const parsed = tauntPoolSchema.safeParse(raw);
+  if (!parsed.success) {
+    return parsed.error.issues.map((issue) => ({
+      lineId: issue.path.join(".") || "<taunts>",
+      problem: issue.message,
+    }));
+  }
+
+  const issues: ValidationIssue[] = [];
+  const ids = new Set<string>();
+  const text = new Set<string>();
+  for (const taunt of parsed.data) {
+    if (ids.has(taunt.id)) issues.push({ lineId: taunt.id, problem: "duplicate id" });
+    ids.add(taunt.id);
+    const normalised = taunt.text.trim().toLowerCase();
+    if (text.has(normalised)) issues.push({ lineId: taunt.id, problem: "duplicate text" });
+    text.add(normalised);
+    if (!taunt.id.startsWith(`${taunt.arena.replace(/_/g, "")}-`)) {
+      issues.push({ lineId: taunt.id, problem: `id does not match arena "${taunt.arena}"` });
+    }
+    for (const term of BANNED_TERMS) {
+      if (normalised.includes(term)) issues.push({ lineId: taunt.id, problem: `banned term "${term}"` });
+    }
+  }
   return issues;
 }
 

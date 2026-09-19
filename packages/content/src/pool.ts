@@ -7,10 +7,12 @@
  */
 
 import groupchatDebate from "../pool/groupchat-debate.json";
-import { contentPoolSchema } from "./schema";
-import type { ContentLine, ContentPool } from "./schema";
+import groupchatTaunts from "../pool/groupchat-taunts.json";
+import { contentPoolSchema, tauntPoolSchema } from "./schema";
+import type { ContentLine, ContentPool, Taunt } from "./schema";
 
 export const POOL: ContentPool = contentPoolSchema.parse(groupchatDebate);
+export const TAUNTS: Taunt[] = tauntPoolSchema.parse(groupchatTaunts);
 
 /** Every field is optional and narrows independently; no query means the pool. */
 export interface LineQuery {
@@ -31,4 +33,8 @@ export function linesFor(query: LineQuery = {}, pool: ContentPool = POOL): Conte
 /** Which arenas the committed pool can actually stage. */
 export function arenas(pool: ContentPool = POOL): string[] {
   return [...new Set(pool.map((line) => line.arena))];
+}
+
+export function tauntsFor(arena: string, pool: readonly Taunt[] = TAUNTS): Taunt[] {
+  return pool.filter((taunt) => taunt.arena === arena);
 }

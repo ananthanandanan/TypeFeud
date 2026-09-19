@@ -18,3 +18,13 @@ export type ContentLine = z.infer<typeof contentLineSchema>;
 
 export const contentPoolSchema = z.array(contentLineSchema);
 export type ContentPool = ContentLine[];
+
+/** Canned intermission copy. It is selected, never edited by a player. */
+export const tauntSchema = z.object({
+  id: z.string().regex(/^[a-z0-9]+-taunt-\d{3}$/, "id must be <arena>-taunt-<nnn>"),
+  arena: z.string(),
+  text: z.string().min(1),
+});
+
+export const tauntPoolSchema = z.array(tauntSchema);
+export type Taunt = z.infer<typeof tauntSchema>;

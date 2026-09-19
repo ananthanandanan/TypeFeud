@@ -12,6 +12,7 @@ export interface RecordedDeal {
 export type ReplayAction =
   | { type: "arena.done" }
   | { type: "intermission.done" }
+  | { type: "taunt"; slot: PlayerSlot; tauntId: string; text: string }
   | { type: "round.end"; deals: [RecordedDeal, RecordedDeal] | null }
   | { type: "input"; input: Exclude<RoundInput, { type: "deal" }> }
   | { type: "deal"; deal: RecordedDeal }

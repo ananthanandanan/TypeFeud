@@ -8,13 +8,14 @@ import {
   ARENA_REVEAL_MS, BACKSPACE,
   type PlayerSlot, type ReplaySetup, type RoundName,
 } from "@typefeud/game";
-import { useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { DevFlags } from "@/dev/flags";
 import { useTuning } from "@/dev/tuning";
 import { buildGhostSchedule, ghostSeed } from "./ghost";
 import { createHistoryStore, recentLineIds } from "./history";
-import { intermissionMs, type MatchState } from "./machine";
+import { intermissionMs, type MatchState, type SentTaunt } from "./machine";
 import { advanceSession, createSession, type SessionCommand, type SessionState } from "./session";
+import { resultStats, type PlayerMatchStats } from "./stats";
 
 /** Who a round-scoped timer was armed for, and against which deal. */
 interface DealGuard {
@@ -30,11 +31,13 @@ interface BrowserSession {
 
 type BrowserAction =
   | { type: "initialize"; setup: ReplaySetup; now: number }
+  | { type: "restart"; setup: ReplaySetup; now: number }
   | { type: "command"; command: SessionCommand; now: number; round?: RoundName; guard?: DealGuard };
 
 function browserReducer(state: BrowserSession | null, action: BrowserAction): BrowserSession | null {
-  if (action.type === "initialize") {
-    return state ?? { session: createSession(action.setup), origin: action.now };
+  if (action.type === "initialize" || action.type === "restart") {
+    if (action.type === "initialize" && state) return state;
+    return { session: createSession(action.setup), origin: action.now };
   }
   if (!state || (action.round && action.round !== state.session.match.round.round) ||
     (action.guard && action.guard.generation !== state.session.match.generation[action.guard.slot])) {
@@ -45,7 +48,14 @@ function browserReducer(state: BrowserSession | null, action: BrowserAction): Br
   return session === state.session ? state : { ...state, session };
 }
 
-export function useMatch(flags: DevFlags): MatchState | null {
+export interface MatchController {
+  match: MatchState;
+  stats: PlayerMatchStats;
+  sendTaunt: (taunt: SentTaunt) => void;
+  rematch: () => void;
+}
+
+export function useMatch(flags: DevFlags): MatchController | null {
   const { tuning } = useTuning();
   const [browser, dispatch] = useReducer(browserReducer, null);
   const initialized = useRef(false);
@@ -68,22 +78,24 @@ export function useMatch(flags: DevFlags): MatchState | null {
   const ghostOptions = match?.round.players[1].options;
   const seed = session?.trace.setup.seed;
 
+  const setup = useCallback((): ReplaySetup => ({
+    sessionId: crypto.randomUUID(),
+    seed: crypto.getRandomValues(new Uint32Array(1))[0]!,
+    arena: "group_chat",
+    firstRound: flags.round,
+    tier: flags.tier,
+    tuning,
+    recent: [recentLineIds(history.current?.read() ?? { version: 1, matches: [] }), []],
+  }), [flags.round, flags.tier, tuning]);
+
   // Both SSR and first client render show only the existing arena reveal.
   // Storage never changes an already visible deal. Strict Mode initializes once.
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
     history.current = createHistoryStore(() => window.localStorage);
-    dispatch({
-      type: "initialize", now: performance.now(),
-      setup: {
-        sessionId: crypto.randomUUID(),
-        seed: crypto.getRandomValues(new Uint32Array(1))[0]!,
-        arena: "group_chat", firstRound: flags.round, tier: flags.tier,
-        tuning, recent: [recentLineIds(history.current.read()), []],
-      },
-    });
-  }, [flags, tuning]);
+    dispatch({ type: "initialize", now: performance.now(), setup: setup() });
+  }, [setup]);
 
   useEffect(() => {
     if (!session || phase === "results" || JSON.stringify(tuning) === JSON.stringify(session.tuning)) return;
@@ -223,11 +235,36 @@ export function useMatch(flags: DevFlags): MatchState | null {
     history.current?.finish({
       sessionId: session.trace.setup.sessionId,
       lineIds: session.match.round.players[0].seenLineIds,
+      wpm: resultStats(session.stats[0]).wpm,
+    });
+  }, [session]);
+
+  const rematch = useCallback(() => {
+    if (!session || session.match.phase !== "results") return;
+    history.current?.finish({
+      sessionId: session.trace.setup.sessionId,
+      lineIds: session.match.round.players[0].seenLineIds,
+      wpm: resultStats(session.stats[0]).wpm,
+    });
+    dispatch({ type: "restart", now: performance.now(), setup: setup() });
+  }, [session, setup]);
+
+  const sendTaunt = useCallback((taunt: SentTaunt) => {
+    if (!session || session.match.phase !== "intermission") return;
+    dispatch({
+      type: "command",
+      command: { type: "taunt", slot: 0, tauntId: taunt.id, text: taunt.text },
+      round: session.match.round.round,
+      now: performance.now(),
     });
   }, [session]);
 
   // HUD reads the browser clock; the logical state and trace stay relative.
-  return match && origin !== undefined
-    ? { ...match, roundStartedAt: match.roundStartedAt === null ? null : origin + match.roundStartedAt }
-    : null;
+  if (!match || !session || origin === undefined) return null;
+  return {
+    match: { ...match, roundStartedAt: match.roundStartedAt === null ? null : origin + match.roundStartedAt },
+    stats: session.stats[0],
+    sendTaunt,
+    rematch,
+  };
 }

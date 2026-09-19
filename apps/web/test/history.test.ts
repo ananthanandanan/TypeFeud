@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { appendHistory, createHistoryStore, parseHistory, recentLineIds, type RecentHistory } from "../src/match/history";
+import {
+  appendHistory,
+  createHistoryStore,
+  parseHistory,
+  recentLineIds,
+  recentWpm,
+  type RecentHistory,
+} from "../src/match/history";
 
 describe("recent displayed lines", () => {
   it("keeps the last three distinct completed matches without mutating earlier history", () => {
@@ -30,6 +37,15 @@ describe("recent displayed lines", () => {
     raw = JSON.stringify(appendHistory(parseHistory(raw), { sessionId: "another-tab", lineIds: ["c"] }));
     expect(store.finish({ sessionId: "two", lineIds: ["d"] }).matches.map((match) => match.sessionId))
       .toEqual(["one", "another-tab", "two"]);
+  });
+
+  it("keeps recent WPM with the match while accepting older entries without it", () => {
+    let history = appendHistory({ version: 1, matches: [] }, { sessionId: "old", lineIds: ["a"] });
+    history = appendHistory(history, { sessionId: "new", lineIds: ["b"], wpm: 74 });
+    expect(recentWpm(history)).toEqual([74]);
+    expect(parseHistory(JSON.stringify(history))).toEqual(history);
+    expect(parseHistory('{"version":1,"matches":[{"sessionId":"x","lineIds":["a"],"wpm":-1}]}'))
+      .toEqual({ version: 1, matches: [] });
   });
 
   it("keeps usable in-memory history after storage access or writing fails", () => {

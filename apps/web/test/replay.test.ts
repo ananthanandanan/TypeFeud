@@ -42,7 +42,7 @@ function runner(config = setup, source = pool) {
 }
 
 function logical(state: SessionState) {
-  return { match: state.match, cursors: state.cursors, resolved: state.resolved, tuning: state.tuning };
+  return { match: state.match, cursors: state.cursors, resolved: state.resolved, tuning: state.tuning, stats: state.stats };
 }
 
 describe("recording and replay", () => {
@@ -66,6 +66,16 @@ describe("recording and replay", () => {
     expect(run.state.match.round.players.map((player) => player.hp)).toEqual([89, 63]);
     run.send({ type: "round.end" });
     expect(run.state.match.phase).toBe("intermission");
+    run.send({
+      type: "taunt",
+      slot: 0,
+      tauntId: "groupchat-taunt-001",
+      text: "Bold words for someone losing.",
+    });
+    expect(run.state.match.taunts[0]?.id).toBe("groupchat-taunt-001");
+    const afterTaunt = run.state;
+    run.send({ type: "taunt", slot: 0, tauntId: "duplicate", text: "Nope" });
+    expect(run.state).toBe(afterTaunt);
     const displayed = run.state.match.round.players[0].seenLineIds;
     const pending = run.state.match.pending!.players[0].options.map((line) => line.id);
     expect(displayed.some((id) => pending.includes(id))).toBe(false);

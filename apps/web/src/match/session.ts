@@ -6,6 +6,7 @@ import {
 } from "@typefeud/game";
 import { initialMatch, matchReducer, nextRoundName, openRound, type MatchState } from "./machine";
 import { rememberLines, selectOptions } from "./selection";
+import { emptyMatchStats, recordLineStats, type MatchStats } from "./stats";
 
 export interface SessionState {
   match: MatchState;
@@ -13,6 +14,7 @@ export interface SessionState {
   resolved: [boolean, boolean];
   tuning: Tuning;
   trace: ReplayRecord;
+  stats: MatchStats;
 }
 
 export type SessionCommand = Exclude<ReplayAction, { type: "deal" | "round.end" }>
@@ -41,6 +43,7 @@ function beginRecording(trace: ReplayRecord): SessionState {
     resolved: [false, false],
     tuning: copyTuning(setup.tuning),
     trace: { ...trace, events: [] },
+    stats: emptyMatchStats(),
   };
 }
 
@@ -65,6 +68,7 @@ function allowed(state: SessionState, command: SessionCommand | ReplayAction): b
   switch (command.type) {
     case "arena.done": return match.phase === "arena";
     case "intermission.done": return match.phase === "intermission";
+    case "taunt": return match.phase === "intermission" && !match.taunts[command.slot];
     case "round.end": return match.phase === "round" && match.round.status === "over";
     case "tuning": return match.phase !== "results";
     case "input": return match.phase === "round" && match.round.status === "live";
@@ -83,7 +87,7 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
     throw new Error("Replay: invalid event order or time");
   }
   if (!allowed(state, event.action)) throw new Error(`Replay: ${event.action.type} is invalid in this phase`);
-  let { match, tuning } = state;
+  let { match, tuning, stats } = state;
   let resolved = state.resolved;
   const cursors: [number, number] = [...state.cursors];
   const { action } = event;
@@ -93,6 +97,13 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
     case "intermission.done":
       match = matchReducer(match, { type: action.type, now: event.at });
       resolved = [false, false];
+      break;
+    case "taunt":
+      match = matchReducer(match, {
+        type: "taunt.sent",
+        slot: action.slot,
+        taunt: { id: action.tauntId, text: action.text },
+      });
       break;
     case "tuning":
       tuning = copyTuning(action.tuning);
@@ -116,6 +127,8 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
       const input = action.type === "deal"
         ? { type: "deal" as const, slot: action.deal.slot, options: recordedOptions(state.trace.lines, action.deal) }
         : action.input;
+      const acting = "slot" in input ? input.slot : undefined;
+      const before = acting === undefined ? null : match.round.players[acting];
       const driven = driveRound({ round: match.round, resolved }, input, roundAt, tuning);
       resolved = driven.resolved;
       if (input.type === "deal" && driven.round.status === "live") {
@@ -126,7 +139,6 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
       } else {
         // A snapshot is the opponent's keystroke: it moves their clock the same
         // way, and the impact beat after their line is measured from it.
-        const acting = "slot" in input ? input.slot : undefined;
         const typed = input.type === "key" || input.type === "progress";
         match = matchReducer(match, {
           type: "round.changed", round: driven.round, slot: acting,
@@ -135,6 +147,16 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
             ? roundAt : undefined,
         });
         if (driven.outcome && acting !== undefined) {
+          const line = before?.options.find((option) => option.id === driven.outcome?.lineId);
+          const startedAt = before?.progress?.startedAt ?? driven.round.players[acting].progress?.startedAt ?? roundAt;
+          stats = recordLineStats(
+            stats,
+            acting,
+            match.round.round,
+            line?.text.length ?? 0,
+            roundAt - startedAt,
+            driven.outcome,
+          );
           match = matchReducer(match, {
             type: "line.resolved", round: driven.round, slot: acting, outcome: driven.outcome,
           });
@@ -143,7 +165,7 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
       break;
     }
   }
-  return { match, cursors, resolved, tuning, trace: { ...state.trace, events: [...state.trace.events, event] } };
+  return { match, cursors, resolved, tuning, stats, trace: { ...state.trace, events: [...state.trace.events, event] } };
 }
 
 /** Deal generation belongs to live play only; playback consumes saved offers. */
@@ -182,6 +204,7 @@ export function advanceSession(
       break;
     }
     case "tuning": action = { type: "tuning", tuning: copyTuning(command.tuning) }; break;
+    case "taunt": action = { ...command }; break;
     case "input": action = { type: "input", input: { ...command.input } }; break;
     default: action = { ...command };
   }

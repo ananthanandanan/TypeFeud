@@ -46,6 +46,11 @@ import {
  */
 export type Phase = "arena" | "round" | "intermission" | "results";
 
+export interface SentTaunt {
+  id: string;
+  text: string;
+}
+
 export interface MatchState {
   phase: Phase;
   /** the round being played, or the one just finished while in `intermission` */
@@ -56,6 +61,8 @@ export interface MatchState {
   results: RoundResult[];
   /** set once the fight is over */
   outcome: MatchOutcome | null;
+  /** One completed canned taunt per slot in the current intermission. */
+  taunts: [SentTaunt | null, SentTaunt | null];
 
   /**
    * Session-relative time when the round began. `RoundState.endsAt` is relative
@@ -152,6 +159,7 @@ export function initialMatch(round: RoundState): MatchState {
     pending: null,
     results: [],
     outcome: null,
+    taunts: [null, null],
     roundStartedAt: null,
     lineOutcome: [null, null],
     lastKeyAt: [0, 0],
@@ -170,6 +178,7 @@ function starting(state: MatchState, round: RoundState, now: number): MatchState
     lineOutcome: [null, null],
     lastKeyAt: [0, 0],
     generation: [state.generation[0] + 1, state.generation[1] + 1],
+    taunts: [null, null],
   };
 }
 
@@ -188,7 +197,9 @@ export type MatchAction =
   /** the round is over — `options` are the deal for whatever comes next */
   | { type: "round.end"; options: DealtOptions; now: number; tuning?: Tuning }
   /** the beat between rounds has run its course */
-  | { type: "intermission.done"; now: number };
+  | { type: "intermission.done"; now: number }
+  /** a player completed one of the canned intermission lines */
+  | { type: "taunt.sent"; slot: PlayerSlot; taunt: SentTaunt };
 
 /**
  * The whole sequence, in one place.
@@ -260,6 +271,11 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
     case "intermission.done":
       return state.phase === "intermission" && state.pending
         ? starting(state, state.pending, action.now)
+        : state;
+
+    case "taunt.sent":
+      return state.phase === "intermission" && !state.taunts[action.slot]
+        ? { ...state, taunts: replace(state.taunts, action.slot, action.taunt) }
         : state;
   }
 }

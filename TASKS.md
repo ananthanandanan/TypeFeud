@@ -78,7 +78,7 @@ are tuned. All solo, no network.
   - Test asserts replaying a trace reproduces an identical final state.
   - Built now though export ships at Milestone 6 — retrofitting determinism later is miserable work.
   - **Depends on:** T-05 (#5)
-  - **Implemented and verified locally, 2026-09-10; not yet merged.** Independent seeded player streams, displayed-option history, browser initialization without `FIRST_DEAL`, versioned in-memory recording and full-match replay through the shared round driver. Deadline input is rejected before mutation; resolution is guarded per slot. Automated checks and the user's browser smoke test pass. SPEC §§3.6, 4.2 and 5.3 document the final contracts. Plan: `docs/plan/seeded-selection-replay.html`.
+  - **Merged in [#21](https://github.com/ananthanandanan/TypeFeud/pull/21), 2026-09-11.** Independent seeded player streams, displayed-option history, browser initialization without `FIRST_DEAL`, versioned in-memory recording and full-match replay through the shared round driver. Deadline input is rejected before mutation; resolution is guarded per slot. Automated checks and the user's browser smoke test pass. SPEC §§3.6, 4.2 and 5.3 document the final contracts. Plan: `docs/plan/seeded-selection-replay.html`.
 
 - [x] **[T-07 #7](https://github.com/ananthanandanan/TypeFeud/issues/7)** `feat: scripted ghost opponent` `M`
   - Replays a canned trace with light timing jitter, consumed as a stream of `{lineId, charIndex, errors}` so T-11 (#11) swaps the data source rather than restructuring anything.
@@ -86,14 +86,16 @@ are tuned. All solo, no network.
   - **Depends on:** T-06 (#6)
   - **Done, 2026-09-11.** `applyProgressSnapshot` joined `packages/game` and `driveRound` gained a `progress` input, so the opponent resolves through `resolveLine` on the identical path as a keystroke. The ghost itself is `apps/web/src/match/ghost.ts` — normalized cadence traces, a line chosen from the three it was offered, seeded jitter, collapsed to snapshots at 10Hz. Three things moved that the plan did not foresee: `MatchState`'s `lineOutcome`, `lastKeyAt` and `generation` are now **per slot**, because the ghost needs an impact beat of its own before it can be dealt again (without it the ghost lands one line per round and stops); `buildGhostSchedule` takes a derived seed rather than threading a random cursor, so a Strict Mode double-invoke cannot produce a different ghost; and `applyProgressSnapshot` accepts a decreasing `charIndex` rather than rejecting it, since a backspace and a stale packet are indistinguishable and invariant 6 says the repair is the real one. Spec moves: §4.3 gained the snapshot contract and what it synthesizes, §4.8 gained what was actually built and what was deferred, §7.2 gained what `?bot=1` now does. Confirmed in the browser: an unanswered ghost knocks the player out in all three rounds, and playing back lands damage both ways. Plan: `docs/plan/scripted-ghost-opponent.html`.
 
-- [ ] **[T-08 #8](https://github.com/ananthanandanan/TypeFeud/issues/8)** `feat: intermission and taunt exchange` `S`
+- [x] **[T-08 #8](https://github.com/ananthanandanan/TypeFeud/issues/8)** `feat: intermission and taunt exchange` `S`
   - 10s intermission, three canned taunts, type one to send; lands on the opponent's screen as a chat bubble (SPEC §2.9).
   - Canned lines only — zero moderation surface.
   - **Depends on:** T-05 (#5)
+  - **Done, 2026-09-19.** Three validated Group Chat taunts use first-character lock-in, wrong-character advance and backspace repair. Completion records one canned taunt per slot through the deterministic session/replay path, then replaces the options with a bubble on the opponent's half while the existing countdown continues. Raw intermission keys stay local; the recorded event snapshots ID and text, and the existing multiplayer message remains ID-only. Added content and pure keystroke coverage.
 
-- [ ] **[T-09 #9](https://github.com/ananthanandanan/TypeFeud/issues/9)** `feat: results screen` `M`
+- [x] **[T-09 #9](https://github.com/ananthanandanan/TypeFeud/issues/9)** `feat: results screen` `M`
   - Not a stats dump. Lead with the clip, then WPM / accuracy / biggest hit; rematch button large and centred as the obvious next action (SPEC §6.6).
   - **Depends on:** T-05 (#5)
+  - **Done, 2026-09-19.** The supplied Results artboard is now the real end state: verdict, biggest-hit match reel, WPM / accuracy / biggest hit, and a full-width rematch action. The reel is deliberately a still until Milestone 6 rather than fake playback UI. Session stats are computed on line resolution for both slots and replayed through the same path; recent local WPM is persisted with the existing three-match line history for later ghost profile matching. Rematch creates a fresh seed/session without reloading the page. Added stats/history/replay coverage.
 
 - [ ] **[T-10 #10](https://github.com/ananthanandanan/TypeFeud/issues/10)** `feat: accessibility pass` `M`
   - Reduced-motion disables shake and turns sabotage into a dimmed overlay; dyslexia-friendly font option; no red/green-only signalling; full keyboard navigation (SPEC §6.7).

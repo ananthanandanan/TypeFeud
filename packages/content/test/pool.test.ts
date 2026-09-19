@@ -1,8 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { arenas, linesFor, POOL } from "../src/pool";
-import { validatePool } from "../src/validate";
+import { arenas, linesFor, POOL, TAUNTS, tauntsFor } from "../src/pool";
+import { validatePool, validateTaunts } from "../src/validate";
 
 const POOL_DIR = join(import.meta.dirname, "..", "pool");
 
@@ -16,7 +16,7 @@ describe("content pool", () => {
   for (const file of poolFiles) {
     it(`${file} passes validation`, () => {
       const raw = JSON.parse(readFileSync(join(POOL_DIR, file), "utf8"));
-      expect(validatePool(raw)).toEqual([]);
+      expect(file.includes("taunts") ? validateTaunts(raw) : validatePool(raw)).toEqual([]);
     });
   }
 });
@@ -87,5 +87,15 @@ describe("linesFor", () => {
 
   it("lists the arenas the pool can stage", () => {
     expect(arenas()).toContain("group_chat");
+  });
+});
+
+describe("tauntsFor", () => {
+  it("returns the three selectable Group Chat taunts with distinct lock-in keys", () => {
+    const taunts = tauntsFor("group_chat");
+    expect(taunts).toEqual(TAUNTS);
+    expect(taunts).toHaveLength(3);
+    expect(new Set(taunts.map((taunt) => taunt.text[0]?.toLowerCase())).size).toBe(3);
+    expect(tauntsFor("nowhere")).toEqual([]);
   });
 });

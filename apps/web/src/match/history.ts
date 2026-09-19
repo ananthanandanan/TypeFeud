@@ -3,6 +3,8 @@ export const HISTORY_KEY = "typefeud.recent-lines.v1";
 export interface HistoryEntry {
   sessionId: string;
   lineIds: string[];
+  /** Rounded match WPM. Used by a later ghost profile selector. */
+  wpm?: number;
 }
 
 export interface RecentHistory {
@@ -27,8 +29,13 @@ export function parseHistory(raw: string | null): RecentHistory {
     for (const entry of value.matches) {
       if (!entry || typeof entry !== "object" || typeof entry.sessionId !== "string" || !entry.sessionId ||
         !Array.isArray(entry.lineIds) || !entry.lineIds.every((id: unknown) => typeof id === "string" && id.length > 0) ||
+        ("wpm" in entry && (typeof entry.wpm !== "number" || !Number.isFinite(entry.wpm) || entry.wpm < 0)) ||
         matches.some((match) => match.sessionId === entry.sessionId)) return emptyHistory();
-      matches.push({ sessionId: entry.sessionId, lineIds: [...new Set<string>(entry.lineIds)] });
+      matches.push({
+        sessionId: entry.sessionId,
+        lineIds: [...new Set<string>(entry.lineIds)],
+        ...(typeof entry.wpm === "number" ? { wpm: entry.wpm } : {}),
+      });
     }
     return { version: 1, matches };
   } catch {
@@ -40,12 +47,20 @@ export function appendHistory(history: RecentHistory, entry: HistoryEntry): Rece
   if (history.matches.some((match) => match.sessionId === entry.sessionId)) return history;
   return {
     version: 1,
-    matches: [...history.matches, { sessionId: entry.sessionId, lineIds: [...new Set(entry.lineIds)] }].slice(-3),
+    matches: [...history.matches, {
+      sessionId: entry.sessionId,
+      lineIds: [...new Set(entry.lineIds)],
+      ...(entry.wpm === undefined ? {} : { wpm: entry.wpm }),
+    }].slice(-3),
   };
 }
 
 export function recentLineIds(history: RecentHistory): string[] {
   return [...new Set(history.matches.flatMap((match) => match.lineIds))];
+}
+
+export function recentWpm(history: RecentHistory): number[] {
+  return history.matches.flatMap((match) => match.wpm === undefined ? [] : [match.wpm]);
 }
 
 /** The getter also catches browsers that throw when accessing localStorage. */
