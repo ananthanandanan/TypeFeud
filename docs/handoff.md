@@ -1,111 +1,131 @@
 # Handoff
 
-Issues #9 (results) and #8 (intermission taunts) are complete on `main`.
+Issue #1, CI and repository-wide linting, is implemented and verified locally on
+`main`. The work is not committed or pushed yet. The last pushed commit is
+`e419b85` (`feat: results and intermission taunts`).
 
-**Branch:** `main`, synced with `origin/main`
-**Last updated:** 2026-09-19
+A self-contained visual walkthrough now exists at
+`docs/review/commit-e419b85.html`. It explains the starting gap, CI control
+flow, monorepo lint coverage, formatting baseline, version decisions, local
+verification and the final hosted-run gate. Use it as the review artifact for
+this working-tree change; the filename reflects the current HEAD beneath the
+uncommitted work, not a commit containing the CI implementation.
+
+**Branch:** `main`, ahead of `origin/main` only through uncommitted changes
+**Last updated:** 2026-09-20
 **Working dir:** `/Users/ananthan2k/Gitrepos/TypeFeud`
 
-## What #9 built
+## What #1 built
 
-The placeholder match-end arithmetic was replaced with the Results artboard's
-real hierarchy:
+`.github/workflows/ci.yml` runs on every push and pull request. It has one
+read-only `verify` job with a 15-minute timeout and cancels an older run when a
+new commit arrives on the same ref. Its steps are intentionally separate so the
+GitHub UI says exactly which contract failed:
 
-1. the match verdict and winner pose;
-2. a large match-reel frame showing the player's biggest hit;
-3. WPM, accuracy and biggest hit;
-4. a large centred Rematch button.
+1. lint every workspace and check formatting;
+2. run all tests;
+3. typecheck all workspaces;
+4. validate the committed content pools;
+5. create the production build.
 
-The reel is deliberately a still, not fake playback UI. Persistent playback,
-export and shareable clips remain Milestone 6. The still uses real match data and
-labels export honestly as a later milestone.
+The workflow uses `actions/checkout@v7` and `pnpm/setup@v2`. The pnpm action
+reads the exact `pnpm@11.18.0` version from `package.json`, installs Node 22,
+requires the committed lockfile and caches the pnpm store. Telemetry is disabled
+for Next.js and Turbo in CI.
 
-`apps/web/src/match/stats.ts` owns deterministic per-slot accumulation. A
-resolved line contributes its character count, active typing duration, final
-uncorrected errors and damage. The result screen derives:
+## Repository-wide lint and format
 
-- gross WPM across completed lines, excluding choice/idle time between lines;
-- accuracy from completed characters and final uncorrected errors, so repaired
-  errors cost time but do not receive a second penalty;
-- the highest resolved damage event, including its round and tier.
+The four workspaces that previously had no lint command now run `eslint .`.
+Turbo invokes all five workspace lint tasks; dependency-aware ordering is wired
+through `turbo.json`. The web app retains its Next.js Core Web Vitals and
+TypeScript config. A new root flat config supplies the recommended ESLint and
+TypeScript ESLint rules to the server and shared packages.
 
-Stats are folded inside `applyEvent`, so live play and replay take the same path.
-The replay-equality test now includes stats.
+Root `pnpm lint` now runs both Turbo lint and `pnpm format:check`. Prettier uses
+the repository's established two-space, double-quote, semicolon style with a
+120-column width. Generated design/plan HTML, Markdown and generated/cache
+directories are excluded. The first run mechanically normalized 37 existing
+source/config files; tests and typechecks prove the rewrite did not alter
+behavior.
 
-The existing `typefeud.recent-lines.v1` entry accepts an optional rounded WPM.
-Old stored entries still parse, and the most recent three WPM values can later
-drive #7's deferred ghost profile selection. No database or keystroke history was
-added.
+The repo stays on ESLint 9 for now. ESLint 10 is current and the top-level Next
+config accepts it, but the import, JSX accessibility and React plugins bundled
+by `eslint-config-next@16.3.0` still declare ESLint 9 as their maximum peer.
+Forcing 10 would leave every install with peer warnings. Revisit this with the
+next Next.js/plugin upgrade.
 
-Rematch does not reload the page. It creates a new session ID and seed, reads the
-just-finished recent-line history, and returns to the arena reveal. Existing dev
-flags and current tuning carry into the new session.
+The local pnpm repair created `.pnpm-store/` in the repo, so that cache directory
+is now explicitly ignored alongside `node_modules/`.
 
-## What #8 built
+## Files and scope
 
-The existing 10-second intermission now offers three committed Group Chat
-taunts. Their first letters are distinct. A matching first character locks the
-line case-insensitively, the actual key is rendered, wrong characters advance,
-and backspace repairs. Completing the line replaces the choices with a bubble on
-the opponent's half. Timeout still advances to the already-pending next round.
-
-The keystroke state is local and pure in `apps/web/src/match/taunt.ts`. Only the
-completed canned taunt becomes a session event. The session accepts one taunt per
-slot per intermission and saves ID plus text in the replay so later content edits
-cannot change an old clip. The multiplayer protocol remains ID-only through the
-existing `taunt.send` message; no free-form string crosses that boundary.
-
-Three short taunts ship now. The #11 content target remains 12 per arena. Taunts
-have their own schema and mechanical validation rather than pretending they are
-damage-tier lines.
-
-## Files changed
-
-| File | Change |
+| Area | Change |
 |---|---|
-| `apps/web/src/match/stats.ts` | New deterministic match-stat accumulator and result summary. |
-| `apps/web/src/match/taunt.ts` | New pure taunt lock-in, typing and repair state. |
-| `apps/web/src/match/session.ts` | Fold line outcomes into stats and completed taunts into replay. |
-| `apps/web/src/match/use-match.ts` | Expose stats, taunt send and Rematch; persist rounded WPM. |
-| `apps/web/src/match/history.ts` | Backward-compatible optional WPM in recent match entries. |
-| `apps/web/src/match/machine.ts` | Hold one sent taunt per slot during an intermission. |
-| `apps/web/src/components/match-end.tsx` | Results artboard implementation. |
-| `apps/web/src/components/match-stage.tsx` | Results wiring and the intermission taunt surface/bubble. |
-| `apps/web/src/app/globals.css` | Match-reel stage grid. |
-| `apps/web/test/stats.test.ts` | New aggregation and immutability coverage. |
-| `apps/web/test/taunt.test.ts` | Lock-in, errors, repair, completion and ignored-key coverage. |
-| `apps/web/test/history.test.ts` | WPM persistence, compatibility and invalid-data coverage. |
-| `apps/web/test/replay.test.ts` | Replay equality includes stats and a sent-taunt event. |
-| `packages/content/pool/groupchat-taunts.json` | Three short, distinct-key canned taunts. |
-| `packages/content/src/{schema,pool,validate}.ts` | Taunt schema, query and validation. |
-| `packages/content/test/pool.test.ts` | Validates taunts and distinct lock-in keys. |
-| `packages/game/src/replay.ts` | Serializable completed-taunt action. |
-| `SPEC.md` | Defines results and taunt interaction/replay rules. |
-| `TASKS.md` | Marks #8 and #9 complete locally; fixes stale #6 merge status. |
+| `.github/workflows/ci.yml` | Push/PR verification job with pinned runtime/package-manager behavior. |
+| `eslint.config.mjs` | Root flat ESLint config for non-web TypeScript. |
+| `.prettierrc.json`, `.prettierignore` | Repository source/config format contract; generated review artifacts are excluded. |
+| Root `package.json` | Lint + format scripts and explicit lint/format dependencies. |
+| Four non-web `package.json` files | Added workspace lint scripts. |
+| `turbo.json` | Dependency-aware lint task. |
+| `pnpm-lock.yaml` | Locked the new tooling dependencies. |
+| `.gitignore` | Ignores the local pnpm store. |
+| 37 source/config files | Mechanical first Prettier baseline only. |
+| `TASKS.md` | Marks #1 done locally. |
+| `docs/review/commit-e419b85.html` | Visual walkthrough of the completed local CI implementation. |
 
 ## Verification
 
-- `pnpm test` — 188 passed: game 108, web 48, content 28, protocol 4.
+All checks were run after the Prettier baseline:
+
+- `pnpm lint` — five workspace ESLint tasks passed; Prettier reported every
+  matched file formatted.
+- `pnpm test` — **188 passed**: game 108, web 48, content 28, protocol 4;
+  server has no test files yet and exits successfully by design.
 - `pnpm typecheck` — passed in all five workspaces.
-- `pnpm lint` — passed with no warnings.
 - `pnpm --filter @typefeud/content validate` — 11 passed.
-- `pnpm --filter @typefeud/web exec next build --webpack` — passed.
-- Manual browser smoke test completed by the user: results, Rematch and the
-  intermission taunt exchange all behave as intended.
-- The default Turbopack build could not complete in the managed sandbox: its CSS
-  worker was denied permission to bind a local port. Before that, the first
-  attempt also needed network access to download the configured Google font.
-  The webpack production build compiled, typechecked and prerendered successfully.
+- `pnpm build` — passed with the normal Next.js Turbopack production path.
+- `pnpm peers check` — no peer dependency issues.
+- `git diff --check` — passed after the handoff rewrite.
 
-## What comes next
+After creating the visual walkthrough, `docs/review` was added to
+`.prettierignore` so the review-board skill's canonical CSS and JavaScript stay
+unchanged. `pnpm lint` was rerun: all five Turbo lint tasks succeeded and
+Prettier reported `All matched files use Prettier code style!`.
 
-Milestone 2 still needs #10 accessibility, #11 content pipeline/full Group Chat
-arena, and #12 tuning. #11 is the dependency-unlocking next feature: #12 depends
-on it and on the now-complete #9. #1 CI is still small and overdue; the checks
-above are still run by hand.
+The workflow itself cannot run until these files are pushed to GitHub. After
+push, confirm the first **CI / verify** run is green before closing #1.
 
-## Repository state before this work
+## Next session
 
-#6 seeded line selection/replay, #7 scripted ghost opponent, and #23 ghost by
-default are already merged on `main`. The last committed repository handoff is
-`df51d36`; #8 and #9 are the next combined feature commit on top of it.
+The highest-value next feature is #11, the offline content pipeline and complete
+Group Chat arena. It unlocks #12, the Milestone 2 tuning pass. #10 accessibility
+is also unblocked and can run independently.
+
+Suggested order:
+
+1. inspect `git status --short` and the pending diff, including
+   `docs/review/commit-e419b85.html`;
+2. commit the complete #1 working tree with a history-compatible message such
+   as `chore: add CI and repo-wide linting`;
+3. push `main`, then use GitHub Actions (or `gh run list --workflow CI`) to find
+   and confirm the first **CI / verify** run;
+4. close #1 only after that hosted run is green;
+5. start #11: `scripts/generate-content.ts`, ignored drafts, human-review
+   promotion, about 270 gameplay lines, 10 triggers and 12 taunts;
+6. complete #10 accessibility;
+7. run #12 tuning to close Milestone 2;
+8. move to #13 rooms/clock sync and #14 live multiplayer.
+
+## Skills used this session
+
+- `/ank:review-board` — produced
+  `docs/review/commit-e419b85.html` for the finished local CI feature.
+- `/ank:handoff` — updated this canonical handoff in place for the next session,
+  as required by the repository guidelines.
+
+## Previous completed feature state
+
+#8 intermission taunts and #9 results/rematch are merged on `main` in `e419b85`.
+The user manually verified both behaviors before that commit was pushed. The
+results screen stores recent WPM for later ghost matching; taunts are committed,
+validated canned content and replay as completed ID/text events.

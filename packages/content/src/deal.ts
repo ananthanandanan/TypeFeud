@@ -68,22 +68,26 @@ export function dealThree(
     if (!pool.length) throw new Error(`dealThree: no lines at all for ${tier}`);
     return { slot, pool, draw: rng() };
   });
-  const penalty = (line: ContentLine) => seen.includes(line.id) ? 2 : recent.includes(line.id) ? 1 : 0;
+  const penalty = (line: ContentLine) => (seen.includes(line.id) ? 2 : recent.includes(line.id) ? 1 : 0);
   const novelty = (line: ContentLine) => line.tags.filter((tag) => !seenTags.has(tag)).length;
   function choicesFor(relaxation: number) {
-    return candidatesBySlot.map(({ slot, pool, draw }) => {
-      const outsideMatch = pool.filter((line) => !seen.includes(line.id));
-      const fresh = outsideMatch.filter((line) => !recent.includes(line.id));
-      const eligible = relaxation === 0 && fresh.length ? fresh
-        : relaxation < 2 && outsideMatch.length ? outsideMatch : pool;
-      const ordered = [...eligible].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-      const offset = Math.min(Math.floor(draw * ordered.length), ordered.length - 1);
-      const rotated = [...ordered.slice(offset), ...ordered.slice(0, offset)];
-      rotated.sort((a, b) => penalty(a) - penalty(b) || novelty(b) - novelty(a));
-      // Candidates with the same first character have identical constraints.
-      const unique = rotated.filter((line, i) => rotated.findIndex((other) => firstChar(other) === firstChar(line)) === i);
-      return { slot, choices: unique };
-    }).sort((a, b) => a.choices.length - b.choices.length);
+    return candidatesBySlot
+      .map(({ slot, pool, draw }) => {
+        const outsideMatch = pool.filter((line) => !seen.includes(line.id));
+        const fresh = outsideMatch.filter((line) => !recent.includes(line.id));
+        const eligible =
+          relaxation === 0 && fresh.length ? fresh : relaxation < 2 && outsideMatch.length ? outsideMatch : pool;
+        const ordered = [...eligible].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        const offset = Math.min(Math.floor(draw * ordered.length), ordered.length - 1);
+        const rotated = [...ordered.slice(offset), ...ordered.slice(0, offset)];
+        rotated.sort((a, b) => penalty(a) - penalty(b) || novelty(b) - novelty(a));
+        // Candidates with the same first character have identical constraints.
+        const unique = rotated.filter(
+          (line, i) => rotated.findIndex((other) => firstChar(other) === firstChar(line)) === i,
+        );
+        return { slot, choices: unique };
+      })
+      .sort((a, b) => a.choices.length - b.choices.length);
   }
   let slots = choicesFor(0);
 

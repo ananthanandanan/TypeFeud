@@ -88,12 +88,7 @@ export function MatchStage({ flags }: { flags: DevFlags }) {
       ) : null}
 
       {phase === "results" && match.outcome ? (
-        <MatchEnd
-          outcome={match.outcome}
-          opponentName={opponentName}
-          playerStats={stats}
-          onRematch={rematch}
-        />
+        <MatchEnd outcome={match.outcome} opponentName={opponentName} playerStats={stats} onRematch={rematch} />
       ) : null}
     </main>
   );
@@ -139,12 +134,7 @@ function Intermission({
   if (!result) return null;
 
   const carry = startingHp("fight", results, 0) - startingHp("fight", [], 0);
-  const took =
-    result.winner === null
-      ? "NOBODY TAKES IT"
-      : result.winner === 0
-        ? "YOU TAKE IT"
-        : "THEY TAKE IT";
+  const took = result.winner === null ? "NOBODY TAKES IT" : result.winner === 0 ? "YOU TAKE IT" : "THEY TAKE IT";
 
   return (
     <div className="flex flex-col items-center gap-3 py-8">
@@ -159,12 +149,7 @@ function Intermission({
         {result.hp[0]} — {result.hp[1]}
         {carry > 0 ? ` · +${carry} HP into the fight` : ""}
       </span>
-      <TauntExchange
-        options={TAUNT_OPTIONS}
-        sent={sentTaunt}
-        opponentName={opponentName}
-        onSend={onSend}
-      />
+      <TauntExchange options={TAUNT_OPTIONS} sent={sentTaunt} opponentName={opponentName} onSend={onSend} />
       {next ? <NextRoundIn next={next} /> : null}
     </div>
   );
@@ -214,9 +199,7 @@ function TauntExchange({
 
   return (
     <div className="mt-6 flex w-full flex-col gap-3">
-      <span className="text-muted text-center text-[10px] tracking-[0.2em]">
-        PICK A TAUNT · TYPE TO SEND
-      </span>
+      <span className="text-muted text-center text-[10px] tracking-[0.2em]">PICK A TAUNT · TYPE TO SEND</span>
       {options.map((option, optionIndex) => {
         const selected = progress.selected === optionIndex;
         const dimmed = progress.selected !== null && !selected;
@@ -234,15 +217,17 @@ function TauntExchange({
                 return (
                   <span
                     key={index}
-                    className={wrong
-                      ? "text-error underline"
-                      : typed
-                        ? "text-you"
-                        : current
-                          ? "text-text border-momentum border-b-2"
-                          : progress.selected === null
-                            ? "text-text"
-                            : "text-muted"}
+                    className={
+                      wrong
+                        ? "text-error underline"
+                        : typed
+                          ? "text-you"
+                          : current
+                            ? "text-text border-momentum border-b-2"
+                            : progress.selected === null
+                              ? "text-text"
+                              : "text-muted"
+                    }
                   >
                     {typed ? progress.typed[index] : character}
                   </span>

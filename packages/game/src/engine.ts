@@ -55,10 +55,7 @@ export function applyKeystroke(state: RoundState, ev: KeyEvent): RoundState {
   const line = activeLine(player);
   if (!line) return state;
 
-  const next =
-    ev.key === BACKSPACE
-      ? applyBackspace(progress)
-      : applyCharacter(line.text, progress, ev);
+  const next = ev.key === BACKSPACE ? applyBackspace(progress) : applyCharacter(line.text, progress, ev);
 
   return next === progress ? state : withProgress(state, slot, next);
 }
@@ -73,9 +70,7 @@ function applyCharacter(text: string, progress: LineProgress, ev: KeyEvent): Lin
     charIndex: progress.charIndex + 1,
     // Only ever the frontier index, and backspace removes it before it can
     // return — so this stays sorted and duplicate-free without sorting.
-    wrongIndices: correct
-      ? progress.wrongIndices
-      : [...progress.wrongIndices, progress.charIndex],
+    wrongIndices: correct ? progress.wrongIndices : [...progress.wrongIndices, progress.charIndex],
     typedChars: [...progress.typedChars, ev.key],
     startedAt: progress.startedAt ?? ev.t,
   };
@@ -119,9 +114,7 @@ export function lockIn(state: RoundState, ev: KeyEvent): RoundState {
   // BACKSPACE is a one-character key too, and nothing can be locked in with it.
   if (player.progress || ev.key === BACKSPACE || ev.key.length !== 1) return state;
 
-  const chosen = player.options.find(
-    (option) => option.text[0]?.toLowerCase() === ev.key.toLowerCase(),
-  );
+  const chosen = player.options.find((option) => option.text[0]?.toLowerCase() === ev.key.toLowerCase());
   if (!chosen) return state;
 
   return applyKeystroke(withProgress(state, slot, createLineProgress(chosen.id)), ev);
@@ -136,14 +129,12 @@ export function lockIn(state: RoundState, ev: KeyEvent): RoundState {
  * ends it. Dealing does not resolve, so dealing over an unfinished line simply
  * abandons it, undamaged either way.
  */
-export function dealOptions(
-  state: RoundState,
-  slot: PlayerSlot,
-  options: [Line, Line, Line],
-): RoundState {
+export function dealOptions(state: RoundState, slot: PlayerSlot, options: [Line, Line, Line]): RoundState {
   const players = [...state.players] as [PlayerState, PlayerState];
   players[slot] = {
-    ...players[slot], options, progress: null,
+    ...players[slot],
+    options,
+    progress: null,
     seenLineIds: [...new Set([...players[slot].seenLineIds, ...options.map((line) => line.id)])],
   };
   return { ...state, players };
@@ -187,11 +178,7 @@ export interface ResolveInput {
  * by locking one in, and must call this once per completed line — resolving the
  * same progress twice charges the damage twice.
  */
-export function resolveLine(
-  state: RoundState,
-  input: ResolveInput,
-  tuning: Tuning = DEFAULT_TUNING,
-): LineResolution {
+export function resolveLine(state: RoundState, input: ResolveInput, tuning: Tuning = DEFAULT_TUNING): LineResolution {
   const slot = input.slot ?? 0;
   const player = state.players[slot];
   const progress = player.progress;
@@ -207,10 +194,7 @@ export function resolveLine(
   const specialConsumed = player.specialArmed;
   const lineWpm = wpm(line.text.length, input.now - (progress.startedAt ?? input.now));
 
-  const raw = computeDamage(
-    { tier: line.tier, uncorrectedErrors: errors, lineWpm, special: specialConsumed },
-    tuning,
-  );
+  const raw = computeDamage({ tier: line.tier, uncorrectedErrors: errors, lineWpm, special: specialConsumed }, tuning);
   // Rounded once, here, so the number the burst shows is exactly the number HP
   // loses. computeDamage itself stays exact — SPEC §2.5's worked examples are
   // tested against it directly.
@@ -229,9 +213,7 @@ export function resolveLine(
     hp: Math.max(0, player.hp - selfDamage),
     momentum,
     specialArmed: false,
-    seenLineIds: player.seenLineIds.includes(line.id)
-      ? player.seenLineIds
-      : [...player.seenLineIds, line.id],
+    seenLineIds: player.seenLineIds.includes(line.id) ? player.seenLineIds : [...player.seenLineIds, line.id],
   };
   players[opponent] = {
     ...players[opponent],
@@ -259,11 +241,7 @@ export function resolveLine(
  * A no-op (returning the argument unchanged) when the meter is not full or the
  * Special is already armed, so the caller can bind it to a key without guarding.
  */
-export function triggerSpecial(
-  state: RoundState,
-  slot: PlayerSlot = 0,
-  tuning: Tuning = DEFAULT_TUNING,
-): RoundState {
+export function triggerSpecial(state: RoundState, slot: PlayerSlot = 0, tuning: Tuning = DEFAULT_TUNING): RoundState {
   const player = state.players[slot];
   if (player.specialArmed || !specialReady(player, tuning)) return state;
 

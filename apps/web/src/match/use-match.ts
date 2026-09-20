@@ -4,10 +4,7 @@
  * Match decisions run through the same pure session reducer used by replay.
  * Timers are one-shot: phase boundaries, round deadline and the impact beat.
  */
-import {
-  ARENA_REVEAL_MS, BACKSPACE,
-  type PlayerSlot, type ReplaySetup, type RoundName,
-} from "@typefeud/game";
+import { ARENA_REVEAL_MS, BACKSPACE, type PlayerSlot, type ReplaySetup, type RoundName } from "@typefeud/game";
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { DevFlags } from "@/dev/flags";
 import { useTuning } from "@/dev/tuning";
@@ -39,8 +36,11 @@ function browserReducer(state: BrowserSession | null, action: BrowserAction): Br
     if (action.type === "initialize" && state) return state;
     return { session: createSession(action.setup), origin: action.now };
   }
-  if (!state || (action.round && action.round !== state.session.match.round.round) ||
-    (action.guard && action.guard.generation !== state.session.match.generation[action.guard.slot])) {
+  if (
+    !state ||
+    (action.round && action.round !== state.session.match.round.round) ||
+    (action.guard && action.guard.generation !== state.session.match.generation[action.guard.slot])
+  ) {
     return state;
   }
   const at = Math.max(action.now - state.origin, state.session.trace.events.at(-1)?.at ?? 0);
@@ -78,15 +78,18 @@ export function useMatch(flags: DevFlags): MatchController | null {
   const ghostOptions = match?.round.players[1].options;
   const seed = session?.trace.setup.seed;
 
-  const setup = useCallback((): ReplaySetup => ({
-    sessionId: crypto.randomUUID(),
-    seed: crypto.getRandomValues(new Uint32Array(1))[0]!,
-    arena: "group_chat",
-    firstRound: flags.round,
-    tier: flags.tier,
-    tuning,
-    recent: [recentLineIds(history.current?.read() ?? { version: 1, matches: [] }), []],
-  }), [flags.round, flags.tier, tuning]);
+  const setup = useCallback(
+    (): ReplaySetup => ({
+      sessionId: crypto.randomUUID(),
+      seed: crypto.getRandomValues(new Uint32Array(1))[0]!,
+      arena: "group_chat",
+      firstRound: flags.round,
+      tier: flags.tier,
+      tuning,
+      recent: [recentLineIds(history.current?.read() ?? { version: 1, matches: [] }), []],
+    }),
+    [flags.round, flags.tier, tuning],
+  );
 
   // Both SSR and first client render show only the existing arena reveal.
   // Storage never changes an already visible deal. Strict Mode initializes once.
@@ -123,12 +126,17 @@ export function useMatch(flags: DevFlags): MatchController | null {
   useEffect(() => {
     if (phase !== "round" || status !== "live" || startedAt == null || endsAt == null || origin == null) return;
     const deadline = origin + startedAt + endsAt;
-    const id = window.setTimeout(() => {
-      dispatch({
-        type: "command", command: { type: "input", input: { type: "clock" } },
-        round: roundName, now: Math.max(performance.now(), deadline),
-      });
-    }, Math.max(0, deadline - performance.now()));
+    const id = window.setTimeout(
+      () => {
+        dispatch({
+          type: "command",
+          command: { type: "input", input: { type: "clock" } },
+          round: roundName,
+          now: Math.max(performance.now(), deadline),
+        });
+      },
+      Math.max(0, deadline - performance.now()),
+    );
     return () => window.clearTimeout(id);
   }, [phase, status, startedAt, endsAt, origin, roundName]);
 
@@ -142,12 +150,18 @@ export function useMatch(flags: DevFlags): MatchController | null {
     if (phase !== "round" || status !== "live" || !outcome) return;
     if (startedAt == null || origin == null || lastKeyAt == null || generation == null) return;
     const due = origin + startedAt + lastKeyAt + tuning.impactBeatMs;
-    const id = window.setTimeout(() => {
-      dispatch({
-        type: "command", command: { type: "deal", slot: 0 },
-        round: roundName, guard: { slot: 0, generation }, now: performance.now(),
-      });
-    }, Math.max(0, due - performance.now()));
+    const id = window.setTimeout(
+      () => {
+        dispatch({
+          type: "command",
+          command: { type: "deal", slot: 0 },
+          round: roundName,
+          guard: { slot: 0, generation },
+          now: performance.now(),
+        });
+      },
+      Math.max(0, due - performance.now()),
+    );
     return () => window.clearTimeout(id);
   }, [phase, status, outcome, startedAt, origin, lastKeyAt, roundName, generation, tuning.impactBeatMs]);
 
@@ -157,15 +171,31 @@ export function useMatch(flags: DevFlags): MatchController | null {
     if (!flags.bot || phase !== "round" || status !== "live" || !ghostOutcome) return;
     if (startedAt == null || origin == null || ghostLastKeyAt == null || ghostGeneration == null) return;
     const due = origin + startedAt + ghostLastKeyAt + tuning.impactBeatMs;
-    const id = window.setTimeout(() => {
-      dispatch({
-        type: "command", command: { type: "deal", slot: 1 },
-        round: roundName, guard: { slot: 1, generation: ghostGeneration }, now: performance.now(),
-      });
-    }, Math.max(0, due - performance.now()));
+    const id = window.setTimeout(
+      () => {
+        dispatch({
+          type: "command",
+          command: { type: "deal", slot: 1 },
+          round: roundName,
+          guard: { slot: 1, generation: ghostGeneration },
+          now: performance.now(),
+        });
+      },
+      Math.max(0, due - performance.now()),
+    );
     return () => window.clearTimeout(id);
-  }, [flags.bot, phase, status, ghostOutcome, startedAt, origin, ghostLastKeyAt, roundName,
-    ghostGeneration, tuning.impactBeatMs]);
+  }, [
+    flags.bot,
+    phase,
+    status,
+    ghostOutcome,
+    startedAt,
+    origin,
+    ghostLastKeyAt,
+    roundName,
+    ghostGeneration,
+    tuning.impactBeatMs,
+  ]);
 
   /**
    * The ghost itself. One deal in, one schedule out, one timer at a time —
@@ -194,15 +224,20 @@ export function useMatch(flags: DevFlags): MatchController | null {
       const event = events[index];
       if (!event) return;
       const due = origin + startedAt + event.dueAt;
-      timer = window.setTimeout(() => {
-        index += 1;
-        dispatch({
-          type: "command",
-          command: { type: "input", input: { type: "progress", slot: 1, ...event.progress } },
-          round: roundName, guard: { slot: 1, generation: ghostGeneration }, now: performance.now(),
-        });
-        arm();
-      }, Math.max(0, due - performance.now()));
+      timer = window.setTimeout(
+        () => {
+          index += 1;
+          dispatch({
+            type: "command",
+            command: { type: "input", input: { type: "progress", slot: 1, ...event.progress } },
+            round: roundName,
+            guard: { slot: 1, generation: ghostGeneration },
+            now: performance.now(),
+          });
+          arm();
+        },
+        Math.max(0, due - performance.now()),
+      );
     };
     arm();
 
@@ -216,15 +251,23 @@ export function useMatch(flags: DevFlags): MatchController | null {
       if (ev.target instanceof HTMLElement && ev.target.matches("input, textarea")) return;
       if (ev.key === "Tab") {
         ev.preventDefault();
-        dispatch({ type: "command", command: { type: "input", input: { type: "special", slot: 0 } },
-          round: roundName, now: performance.now() });
+        dispatch({
+          type: "command",
+          command: { type: "input", input: { type: "special", slot: 0 } },
+          round: roundName,
+          now: performance.now(),
+        });
         return;
       }
       const key = ev.key === "Backspace" ? BACKSPACE : ev.key;
       if (key !== BACKSPACE && key.length !== 1) return;
       ev.preventDefault();
-      dispatch({ type: "command", command: { type: "input", input: { type: "key", slot: 0, key } },
-        round: roundName, now: performance.now() });
+      dispatch({
+        type: "command",
+        command: { type: "input", input: { type: "key", slot: 0, key } },
+        round: roundName,
+        now: performance.now(),
+      });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -249,15 +292,18 @@ export function useMatch(flags: DevFlags): MatchController | null {
     dispatch({ type: "restart", now: performance.now(), setup: setup() });
   }, [session, setup]);
 
-  const sendTaunt = useCallback((taunt: SentTaunt) => {
-    if (!session || session.match.phase !== "intermission") return;
-    dispatch({
-      type: "command",
-      command: { type: "taunt", slot: 0, tauntId: taunt.id, text: taunt.text },
-      round: session.match.round.round,
-      now: performance.now(),
-    });
-  }, [session]);
+  const sendTaunt = useCallback(
+    (taunt: SentTaunt) => {
+      if (!session || session.match.phase !== "intermission") return;
+      dispatch({
+        type: "command",
+        command: { type: "taunt", slot: 0, tauntId: taunt.id, text: taunt.text },
+        round: session.match.round.round,
+        now: performance.now(),
+      });
+    },
+    [session],
+  );
 
   // HUD reads the browser clock; the logical state and trace stay relative.
   if (!match || !session || origin === undefined) return null;

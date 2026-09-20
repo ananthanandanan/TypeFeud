@@ -1,10 +1,5 @@
 import { TIER_WORD_BOUNDS } from "@typefeud/game";
-import {
-  contentPoolSchema,
-  tauntPoolSchema,
-  type ContentLine,
-  type ContentPool,
-} from "./schema";
+import { contentPoolSchema, tauntPoolSchema, type ContentLine, type ContentPool } from "./schema";
 
 export interface ValidationIssue {
   lineId: string;

@@ -74,8 +74,6 @@ body {
 
 /* A replay-stage plotting grid, not decoration: it locates the two fighters. */
 .match-reel-grid {
-  background-image:
-    linear-gradient(#12161b 1px, transparent 1px),
-    linear-gradient(90deg, #12161b 1px, transparent 1px);
+  background-image: linear-gradient(#12161b 1px, transparent 1px), linear-gradient(90deg, #12161b 1px, transparent 1px);
   background-size: 40px 40px;
 }

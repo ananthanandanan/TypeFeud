@@ -118,10 +118,7 @@ describe("applyKeystroke — before a line is locked in", () => {
   });
 
   it("keeps typing the locked line once one is chosen", () => {
-    const after = Array.from("You had").reduce(
-      (state, k, i) => applyKeystroke(state, key(k, i)),
-      round(),
-    );
+    const after = Array.from("You had").reduce((state, k, i) => applyKeystroke(state, key(k, i)), round());
     expect(progressOf(after)!.lineId).toBe(HAYMAKER.id);
     expect(progressOf(after)!.charIndex).toBe(7);
     expect(uncorrectedErrors(progressOf(after)!)).toBe(0);

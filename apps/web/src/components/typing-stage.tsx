@@ -64,37 +64,26 @@ export function TypingStage({
 
   const started = progress?.startedAt != null;
   const elapsed =
-    progress?.startedAt == null
-      ? 0
-      : Math.max(complete ? lastKeyAt : now, lastKeyAt) - progress.startedAt;
+    progress?.startedAt == null ? 0 : Math.max(complete ? lastKeyAt : now, lastKeyAt) - progress.startedAt;
   const errors = progress ? uncorrectedErrors(progress) : 0;
   const lineWpm = progress ? wpm(progress.charIndex, elapsed) : 0;
   // In flight this is a preview of what the line is worth; once it lands, the
   // resolved outcome replaces it so the readout and the burst never disagree.
   const preview = line
-    ? computeDamage(
-        { tier: line.tier, uncorrectedErrors: errors, lineWpm, special: you.specialArmed },
-        tuning,
-      )
+    ? computeDamage({ tier: line.tier, uncorrectedErrors: errors, lineWpm, special: you.specialArmed }, tuning)
     : null;
 
   return (
     <div className="flex flex-col gap-7">
       <header className="flex items-baseline justify-between">
-        <span className="text-muted text-xs tracking-[0.3em] uppercase">
-          {line ? line.tier : "choose your line"}
-        </span>
+        <span className="text-muted text-xs tracking-[0.3em] uppercase">{line ? line.tier : "choose your line"}</span>
         <span className="text-muted text-xs tracking-[0.24em] uppercase">{line?.id ?? "—"}</span>
       </header>
 
       {/* Outside the typing panel's bounding box, always — SPEC §6.5. */}
       <ImpactBurst outcome={outcome} />
 
-      {line && progress ? (
-        <TypingSurface text={line.text} progress={progress} />
-      ) : (
-        <ChoosePrompt />
-      )}
+      {line && progress ? <TypingSurface text={line.text} progress={progress} /> : <ChoosePrompt />}
 
       <OptionCards options={you.options} lockedId={progress?.lineId ?? null} tuning={tuning} />
 
@@ -140,10 +129,7 @@ export function TypingStage({
 function ChoosePrompt() {
   return (
     <div className="border-edge bg-panel border-2 px-9 py-8">
-      <p
-        className="text-muted font-medium"
-        style={{ fontSize: "32px", lineHeight: 1.7, letterSpacing: "0.01em" }}
-      >
+      <p className="text-muted font-medium" style={{ fontSize: "32px", lineHeight: 1.7, letterSpacing: "0.01em" }}>
         pick one and start typing
       </p>
     </div>

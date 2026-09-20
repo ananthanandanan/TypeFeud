@@ -19,11 +19,7 @@ export function ImpactBurst({ outcome }: { outcome: LineOutcome | null }) {
       {outcome ? (
         <>
           <div className="animate-impact relative flex h-[104px] w-[104px] items-center justify-center">
-            <svg
-              viewBox="0 0 140 140"
-              className="absolute inset-0 h-full w-full"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 140 140" className="absolute inset-0 h-full w-full" aria-hidden="true">
               <polygon points={STARBURST} fill="var(--momentum)" />
             </svg>
             <span className="text-ground relative text-[34px] leading-none font-extrabold tabular-nums">
@@ -33,17 +29,14 @@ export function ImpactBurst({ outcome }: { outcome: LineOutcome | null }) {
 
           <div className="flex flex-col gap-1">
             {outcome.specialConsumed ? (
-              <span className="text-momentum text-[13px] font-extrabold tracking-[0.16em]">
-                SPECIAL ×1.8
-              </span>
+              <span className="text-momentum text-[13px] font-extrabold tracking-[0.16em]">SPECIAL ×1.8</span>
             ) : null}
             <span className="text-muted text-[11px] tracking-[0.16em]">
               {Math.round(outcome.lineWpm)} WPM · {outcome.tier.toUpperCase()}
             </span>
             {outcome.uncorrectedErrors > 0 ? (
               <span className="text-error text-[11px] tracking-[0.16em] underline">
-                {outcome.uncorrectedErrors} ERROR{outcome.uncorrectedErrors > 1 ? "S" : ""} · −
-                {outcome.selfDamage} SELF
+                {outcome.uncorrectedErrors} ERROR{outcome.uncorrectedErrors > 1 ? "S" : ""} · −{outcome.selfDamage} SELF
               </span>
             ) : (
               <span className="text-you text-[11px] tracking-[0.16em]">CLEAN · +1 MOMENTUM</span>

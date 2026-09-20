@@ -92,10 +92,7 @@ function fold(base: LineProgress, snapshot: ProgressSnapshot, at: number): LineP
   return {
     lineId: snapshot.lineId,
     charIndex: snapshot.charIndex,
-    wrongIndices: Array.from(
-      { length: snapshot.errors },
-      (_index, i) => snapshot.charIndex - snapshot.errors + i,
-    ),
+    wrongIndices: Array.from({ length: snapshot.errors }, (_index, i) => snapshot.charIndex - snapshot.errors + i),
     typedChars: [],
     startedAt: base.startedAt ?? (snapshot.charIndex > 0 ? at : null),
   };

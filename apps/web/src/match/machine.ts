@@ -222,8 +222,7 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
       return {
         ...state,
         round,
-        lastKeyAt:
-          action.at === undefined ? state.lastKeyAt : replace(state.lastKeyAt, action.slot ?? 0, action.at),
+        lastKeyAt: action.at === undefined ? state.lastKeyAt : replace(state.lastKeyAt, action.slot ?? 0, action.at),
       };
     }
 
@@ -269,9 +268,7 @@ export function matchReducer(state: MatchState, action: MatchAction): MatchState
     }
 
     case "intermission.done":
-      return state.phase === "intermission" && state.pending
-        ? starting(state, state.pending, action.now)
-        : state;
+      return state.phase === "intermission" && state.pending ? starting(state, state.pending, action.now) : state;
 
     case "taunt.sent":
       return state.phase === "intermission" && !state.taunts[action.slot]

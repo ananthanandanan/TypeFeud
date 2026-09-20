@@ -19,11 +19,7 @@ export const emptyTauntProgress = (): TauntProgress => ({
 });
 
 /** Three-line lock-in without damage: errors advance, and backspace repairs. */
-export function applyTauntKey(
-  options: readonly Taunt[],
-  progress: TauntProgress,
-  key: string,
-): TauntInputResult {
+export function applyTauntKey(options: readonly Taunt[], progress: TauntProgress, key: string): TauntInputResult {
   if (key === BACKSPACE) {
     if (progress.selected === null || progress.typed.length === 0) return { progress, sent: null };
     const index = progress.typed.length - 1;
@@ -38,9 +34,8 @@ export function applyTauntKey(
   }
   if (key.length !== 1) return { progress, sent: null };
 
-  const selected = progress.selected ?? options.findIndex(
-    (taunt) => taunt.text[0]?.toLowerCase() === key.toLowerCase(),
-  );
+  const selected =
+    progress.selected ?? options.findIndex((taunt) => taunt.text[0]?.toLowerCase() === key.toLowerCase());
   const option = options[selected];
   if (selected < 0 || !option || progress.typed.length >= option.text.length) {
     return { progress, sent: null };
@@ -50,9 +45,7 @@ export function applyTauntKey(
   const next: TauntProgress = {
     selected,
     typed: [...progress.typed, key],
-    wrongIndices: key === option.text[index]
-      ? progress.wrongIndices
-      : [...progress.wrongIndices, index],
+    wrongIndices: key === option.text[index] ? progress.wrongIndices : [...progress.wrongIndices, index],
   };
   return { progress: next, sent: next.typed.length === option.text.length ? option : null };
 }

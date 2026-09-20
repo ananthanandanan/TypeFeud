@@ -1,5 +1,12 @@
 import { dealThree, type ContentPool } from "@typefeud/content";
-import { nextRandom, type Line, type PlayerSlot, type RecordedDeal, type ReplaySetup, type RoundName } from "@typefeud/game";
+import {
+  nextRandom,
+  type Line,
+  type PlayerSlot,
+  type RecordedDeal,
+  type ReplaySetup,
+  type RoundName,
+} from "@typefeud/game";
 
 /** Selection is a pure transaction: only the committed deal advances a stream. */
 export function selectOptions(

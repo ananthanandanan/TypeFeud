@@ -1,11 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { WebSocket, WebSocketServer } from "ws";
-import {
-  clientMessageSchema,
-  type ClientMessage,
-  type ServerMessage,
-  type Transport,
-} from "@typefeud/protocol";
+import { clientMessageSchema, type ClientMessage, type ServerMessage, type Transport } from "@typefeud/protocol";
 
 /**
  * Local-dev transport. SPEC §4.6.

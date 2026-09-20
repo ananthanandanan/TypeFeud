@@ -25,9 +25,7 @@ describe("dealThree", () => {
   it("prefers three distinct first characters", () => {
     // The debate pool is full of lines starting with "Y"; picking naively from
     // each tier collides. SPEC §2.3 — lock-in has to be unambiguous.
-    const chars = dealThree({ round: "debate" }, [], fixed(0)).map((line) =>
-      firstChar(line.text),
-    );
+    const chars = dealThree({ round: "debate" }, [], fixed(0)).map((line) => firstChar(line.text));
     expect(new Set(chars).size).toBe(3);
   });
 
@@ -82,8 +80,8 @@ describe("dealThree — first-character collisions", () => {
     // Second deal of a match: the haymaker that does not start with "Y" has
     // already been served, so the only one left collides with both the jab and
     // the combo unless it picks before they do.
-    const chars = dealThree({ round: "debate" }, ["groupchat-debate-haymaker-001"], fixed(0)).map(
-      (line) => firstChar(line.text),
+    const chars = dealThree({ round: "debate" }, ["groupchat-debate-haymaker-001"], fixed(0)).map((line) =>
+      firstChar(line.text),
     );
     expect(new Set(chars).size).toBe(3);
   });

@@ -13,8 +13,13 @@ const tuning = { ...DEFAULT_TUNING, speedMultMin: 1, speedMultMax: 1 };
 
 function player(slot: 0 | 1): PlayerState {
   return {
-    slot, hp: 100, options: [jab, combo, haymaker], progress: null,
-    momentum: 0, specialArmed: false, seenLineIds: [],
+    slot,
+    hp: 100,
+    options: [jab, combo, haymaker],
+    progress: null,
+    momentum: 0,
+    specialArmed: false,
+    seenLineIds: [],
   };
 }
 function round(): RoundState {

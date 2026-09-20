@@ -29,10 +29,7 @@ export function TriggerRound({ round }: { round: RoundState }) {
         <TypingSurface text={word} progress={progress} />
       ) : (
         <div className="border-edge bg-panel border-2 px-12 py-8">
-          <span
-            className="font-extrabold"
-            style={{ fontSize: "48px", lineHeight: 1.2, letterSpacing: "0.12em" }}
-          >
+          <span className="font-extrabold" style={{ fontSize: "48px", lineHeight: 1.2, letterSpacing: "0.12em" }}>
             {word}
           </span>
         </div>

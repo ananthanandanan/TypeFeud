@@ -6,9 +6,15 @@ function line(id: string, tier: ContentLine["tier"], text: string, tags: string[
   return { id, tier, text, tags, arena: "test", round: "debate", wordCount: 4 };
 }
 const pool = [
-  line("j1", "jab", "Alpha"), line("j2", "jab", "Delta"), line("j3", "jab", "Golf"),
-  line("c1", "combo", "Bravo"), line("c2", "combo", "Echo"), line("c3", "combo", "Hotel"),
-  line("h1", "haymaker", "Charlie"), line("h2", "haymaker", "Foxtrot"), line("h3", "haymaker", "India"),
+  line("j1", "jab", "Alpha"),
+  line("j2", "jab", "Delta"),
+  line("j3", "jab", "Golf"),
+  line("c1", "combo", "Bravo"),
+  line("c2", "combo", "Echo"),
+  line("c3", "combo", "Hotel"),
+  line("h1", "haymaker", "Charlie"),
+  line("h2", "haymaker", "Foxtrot"),
+  line("h3", "haymaker", "India"),
 ];
 const query = { arena: "test", round: "debate" as const };
 const ids = (lines: { id: string }[]) => lines.map((line) => line.id);
@@ -31,13 +37,20 @@ describe("selection history and exhaustion", () => {
   });
 
   it("keeps choices stable when pool file order changes", () => {
-    expect(dealThree(query, [], () => 0.7, { pool })).toEqual(dealThree(query, [], () => 0.7, { pool: [...pool].reverse() }));
+    expect(dealThree(query, [], () => 0.7, { pool })).toEqual(
+      dealThree(query, [], () => 0.7, { pool: [...pool].reverse() }),
+    );
   });
 
   it("backtracks when a greedy first-character choice would strand a tier", () => {
-    const tricky = [line("j1", "jab", "Alpha"), line("j2", "jab", "Charlie"),
-      line("c1", "combo", "Bravo"), line("c2", "combo", "Alpha"),
-      line("h1", "haymaker", "Alpha"), line("h2", "haymaker", "Bravo")];
+    const tricky = [
+      line("j1", "jab", "Alpha"),
+      line("j2", "jab", "Charlie"),
+      line("c1", "combo", "Bravo"),
+      line("c2", "combo", "Alpha"),
+      line("h1", "haymaker", "Alpha"),
+      line("h2", "haymaker", "Bravo"),
+    ];
     const dealt = dealThree(query, [], () => 0, { pool: tricky });
     expect(new Set(dealt.map((line) => line.text[0])).size).toBe(3);
   });

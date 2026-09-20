@@ -25,16 +25,8 @@ export function MatchEnd({
   onRematch: () => void;
 }) {
   const stats = resultStats(playerStats);
-  const verdict = outcome.winner === null
-    ? "DRAW"
-    : outcome.winner === 0
-      ? "YOU WON"
-      : `${opponentName} WON`;
-  const tone = outcome.winner === 0
-    ? "text-you"
-    : outcome.winner === 1
-      ? "text-opponent"
-      : "text-text";
+  const verdict = outcome.winner === null ? "DRAW" : outcome.winner === 0 ? "YOU WON" : `${opponentName} WON`;
+  const tone = outcome.winner === 0 ? "text-you" : outcome.winner === 1 ? "text-opponent" : "text-text";
 
   return (
     <section className="flex w-full flex-col items-center gap-7 py-5 sm:py-8" aria-labelledby="match-verdict">
@@ -51,9 +43,11 @@ export function MatchEnd({
       <div className="border-edge bg-panel w-full border-2">
         <div
           className="relative flex min-h-[260px] items-center justify-between overflow-hidden px-[7%] sm:min-h-[360px] sm:px-[9%]"
-          aria-label={stats.biggestHit
-            ? `Match highlight: ${stats.biggestHit.damage} damage in the ${ROUND_TITLE[stats.biggestHit.round].toLowerCase()}`
-            : "Match highlight: no completed hits"}
+          aria-label={
+            stats.biggestHit
+              ? `Match highlight: ${stats.biggestHit.damage} damage in the ${ROUND_TITLE[stats.biggestHit.round].toLowerCase()}`
+              : "Match highlight: no completed hits"
+          }
         >
           <div className="match-reel-grid absolute inset-0" aria-hidden="true" />
           <span className="text-muted absolute top-4 left-4 text-[10px] tracking-[0.2em] sm:top-5 sm:left-6 sm:text-[11px] sm:tracking-[0.24em]">
@@ -80,9 +74,7 @@ export function MatchEnd({
 
         <div className="border-edge-soft flex items-center justify-between gap-4 border-t-2 px-4 py-3 sm:px-6 sm:py-4">
           <span className="text-text text-[11px] font-bold tracking-[0.14em] sm:text-xs">
-            {stats.biggestHit
-              ? `${stats.biggestHit.tier.toUpperCase()} · BIGGEST HIT`
-              : "THE NEXT ONE LANDS"}
+            {stats.biggestHit ? `${stats.biggestHit.tier.toUpperCase()} · BIGGEST HIT` : "THE NEXT ONE LANDS"}
           </span>
           <span className="text-muted text-right text-[10px] tracking-[0.12em] sm:text-[11px] sm:tracking-[0.16em]">
             REPLAY EXPORT · MILESTONE 6
@@ -107,23 +99,42 @@ export function MatchEnd({
   );
 }
 
-function ResultStat({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+function ResultStat({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: boolean;
+}) {
   return (
     <div className={`border-t-[3px] pt-3 sm:pt-4 ${highlight ? "border-momentum" : "border-you"}`}>
       <div className="text-muted text-[9px] tracking-[0.12em] sm:text-[11px] sm:tracking-[0.22em]">{label}</div>
-      <div className={`mt-1 text-2xl leading-none font-extrabold tabular-nums sm:text-[40px] ${highlight ? "text-momentum" : ""}`}>
+      <div
+        className={`mt-1 text-2xl leading-none font-extrabold tabular-nums sm:text-[40px] ${highlight ? "text-momentum" : ""}`}
+      >
         {value}
       </div>
     </div>
   );
 }
 
-function Fighter({ color, pose, small = false }: { color: string; pose: "victory" | "strike" | "hit"; small?: boolean }) {
-  const paths = pose === "victory"
-    ? ["M60 37 L60 80", "M60 50 L84 22", "M60 50 L42 62", "M60 80 L48 118", "M60 80 L74 116"]
-    : pose === "strike"
-      ? ["M67 41 L54 78", "M64 52 L108 47", "M64 55 L44 67", "M54 78 L30 112", "M54 78 L80 118"]
-      : ["M47 44 L62 80", "M50 54 L32 38", "M52 56 L72 40", "M62 80 L50 118", "M62 80 L82 112"];
+function Fighter({
+  color,
+  pose,
+  small = false,
+}: {
+  color: string;
+  pose: "victory" | "strike" | "hit";
+  small?: boolean;
+}) {
+  const paths =
+    pose === "victory"
+      ? ["M60 37 L60 80", "M60 50 L84 22", "M60 50 L42 62", "M60 80 L48 118", "M60 80 L74 116"]
+      : pose === "strike"
+        ? ["M67 41 L54 78", "M64 52 L108 47", "M64 55 L44 67", "M54 78 L30 112", "M54 78 L80 118"]
+        : ["M47 44 L62 80", "M50 54 L32 38", "M52 56 L72 40", "M62 80 L50 118", "M62 80 L82 112"];
   return (
     <svg
       viewBox="0 0 120 140"
@@ -131,9 +142,16 @@ function Fighter({ color, pose, small = false }: { color: string; pose: "victory
       fill="none"
       aria-hidden="true"
     >
-      <circle cx={pose === "hit" ? 44 : pose === "strike" ? 68 : 60} cy={pose === "hit" ? 30 : pose === "strike" ? 26 : 22} r="15" fill={color} />
+      <circle
+        cx={pose === "hit" ? 44 : pose === "strike" ? 68 : 60}
+        cy={pose === "hit" ? 30 : pose === "strike" ? 26 : 22}
+        r="15"
+        fill={color}
+      />
       <g stroke={color} strokeWidth="13" strokeLinecap="round">
-        {paths.map((path) => <path d={path} key={path} />)}
+        {paths.map((path) => (
+          <path d={path} key={path} />
+        ))}
       </g>
     </svg>
   );

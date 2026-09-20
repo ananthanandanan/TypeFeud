@@ -49,15 +49,15 @@ function typedTo(slot: 0 | 1, chars: number): PlayerState {
 }
 
 const completed = (slot: 0 | 1): Pick<RoundState, "players"> => ({
-  players: slot === 0
-    ? [typedTo(0, LINE.text.length), player({ slot: 1, progress: null })]
-    : [player({ progress: null }), typedTo(1, LINE.text.length)],
+  players:
+    slot === 0
+      ? [typedTo(0, LINE.text.length), player({ slot: 1, progress: null })]
+      : [player({ progress: null }), typedTo(1, LINE.text.length)],
 });
 
 const partial = (slot: 0 | 1): Pick<RoundState, "players"> => ({
-  players: slot === 0
-    ? [typedTo(0, 3), player({ slot: 1, progress: null })]
-    : [player({ progress: null }), typedTo(1, 3)],
+  players:
+    slot === 0 ? [typedTo(0, 3), player({ slot: 1, progress: null })] : [player({ progress: null }), typedTo(1, 3)],
 });
 
 /** HP for both slots at once, the pair `tickRound` and `roundResult` read. */
@@ -184,9 +184,7 @@ describe("startingHp", () => {
 
   it("carries +10 per round won into the fight", () => {
     expect(startingHp("fight", [result("debate", 0)], 0)).toBe(BASE + ROUND);
-    expect(startingHp("fight", [result("debate", 0), result("roast", 0)], 0)).toBe(
-      BASE + 2 * ROUND,
-    );
+    expect(startingHp("fight", [result("debate", 0), result("roast", 0)], 0)).toBe(BASE + 2 * ROUND);
   });
 
   it("carries the trigger's +5, deliberately less than a round", () => {

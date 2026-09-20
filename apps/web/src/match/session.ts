@@ -1,8 +1,16 @@
 import type { ContentPool } from "@typefeud/content";
 import {
-  driveRound, playerSeeds, recordedOptions,
-  type Line, type PlayerSlot, type RecordedDeal, type ReplayAction, type ReplayEvent,
-  type ReplayRecord, type ReplaySetup, type Tuning,
+  driveRound,
+  playerSeeds,
+  recordedOptions,
+  type Line,
+  type PlayerSlot,
+  type RecordedDeal,
+  type ReplayAction,
+  type ReplayEvent,
+  type ReplayRecord,
+  type ReplaySetup,
+  type Tuning,
 } from "@typefeud/game";
 import { initialMatch, matchReducer, nextRoundName, openRound, type MatchState } from "./machine";
 import { rememberLines, selectOptions } from "./selection";
@@ -17,9 +25,8 @@ export interface SessionState {
   stats: MatchStats;
 }
 
-export type SessionCommand = Exclude<ReplayAction, { type: "deal" | "round.end" }>
-  | { type: "deal"; slot: PlayerSlot }
-  | { type: "round.end" };
+export type SessionCommand =
+  Exclude<ReplayAction, { type: "deal" | "round.end" }> | { type: "deal"; slot: PlayerSlot } | { type: "round.end" };
 
 function copyTuning(tuning: Tuning): Tuning {
   return { ...tuning, tierBaseDamage: { ...tuning.tierBaseDamage } };
@@ -50,15 +57,19 @@ function beginRecording(trace: ReplayRecord): SessionState {
 /** Browser randomness and storage have already been read and injected here. */
 export function createSession(setup: ReplaySetup, pool?: ContentPool): SessionState {
   const snapshot: ReplaySetup = {
-    ...setup, tuning: copyTuning(setup.tuning), recent: [[...setup.recent[0]], [...setup.recent[1]]],
+    ...setup,
+    tuning: copyTuning(setup.tuning),
+    recent: [[...setup.recent[0]], [...setup.recent[1]]],
   };
   const seeds = playerSeeds(snapshot.seed);
   const first = selectOptions(snapshot, seeds, setup.firstRound, 0, [], pool);
   const second = selectOptions(snapshot, seeds, setup.firstRound, 1, [], pool);
   return beginRecording({
-    version: 1, setup: snapshot,
+    version: 1,
+    setup: snapshot,
     lines: rememberLines(first.lines, second.lines),
-    initialDeals: [first.deal, second.deal], events: [],
+    initialDeals: [first.deal, second.deal],
+    events: [],
   });
 }
 
@@ -66,12 +77,18 @@ export function createSession(setup: ReplaySetup, pool?: ContentPool): SessionSt
 function allowed(state: SessionState, command: SessionCommand | ReplayAction): boolean {
   const { match } = state;
   switch (command.type) {
-    case "arena.done": return match.phase === "arena";
-    case "intermission.done": return match.phase === "intermission";
-    case "taunt": return match.phase === "intermission" && !match.taunts[command.slot];
-    case "round.end": return match.phase === "round" && match.round.status === "over";
-    case "tuning": return match.phase !== "results";
-    case "input": return match.phase === "round" && match.round.status === "live";
+    case "arena.done":
+      return match.phase === "arena";
+    case "intermission.done":
+      return match.phase === "intermission";
+    case "taunt":
+      return match.phase === "intermission" && !match.taunts[command.slot];
+    case "round.end":
+      return match.phase === "round" && match.round.status === "over";
+    case "tuning":
+      return match.phase !== "results";
+    case "input":
+      return match.phase === "round" && match.round.status === "live";
     case "deal": {
       const slot = "slot" in command ? command.slot : command.deal.slot;
       return match.phase === "round" && match.round.status === "live" && state.resolved[slot];
@@ -82,8 +99,12 @@ function allowed(state: SessionState, command: SessionCommand | ReplayAction): b
 /** Commit a serializable input. Replay enters this exact path too. */
 function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
   const previous = state.trace.events.at(-1);
-  if (event.seq !== state.trace.events.length || event.round !== state.match.round.round ||
-    !Number.isFinite(event.at) || event.at < (previous?.at ?? 0)) {
+  if (
+    event.seq !== state.trace.events.length ||
+    event.round !== state.match.round.round ||
+    !Number.isFinite(event.at) ||
+    event.at < (previous?.at ?? 0)
+  ) {
     throw new Error("Replay: invalid event order or time");
   }
   if (!allowed(state, event.action)) throw new Error(`Replay: ${event.action.type} is invalid in this phase`);
@@ -113,7 +134,7 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
       if (Boolean(next) !== Boolean(action.deals)) throw new Error("Replay: missing or unexpected round deal");
       const options = action.deals
         ? optionsFor(state.trace.lines, action.deals)
-        : [match.round.players[0].options, match.round.players[1].options] as const;
+        : ([match.round.players[0].options, match.round.players[1].options] as const);
       if (action.deals) {
         cursors[0] = action.deals[0].randomState;
         cursors[1] = action.deals[1].randomState;
@@ -124,9 +145,10 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
     }
     case "input":
     case "deal": {
-      const input = action.type === "deal"
-        ? { type: "deal" as const, slot: action.deal.slot, options: recordedOptions(state.trace.lines, action.deal) }
-        : action.input;
+      const input =
+        action.type === "deal"
+          ? { type: "deal" as const, slot: action.deal.slot, options: recordedOptions(state.trace.lines, action.deal) }
+          : action.input;
       const acting = "slot" in input ? input.slot : undefined;
       const before = acting === undefined ? null : match.round.players[acting];
       const driven = driveRound({ round: match.round, resolved }, input, roundAt, tuning);
@@ -141,10 +163,15 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
         // way, and the impact beat after their line is measured from it.
         const typed = input.type === "key" || input.type === "progress";
         match = matchReducer(match, {
-          type: "round.changed", round: driven.round, slot: acting,
-          at: typed && acting !== undefined &&
+          type: "round.changed",
+          round: driven.round,
+          slot: acting,
+          at:
+            typed &&
+            acting !== undefined &&
             driven.round.players[acting].progress !== match.round.players[acting].progress
-            ? roundAt : undefined,
+              ? roundAt
+              : undefined,
         });
         if (driven.outcome && acting !== undefined) {
           const line = before?.options.find((option) => option.id === driven.outcome?.lineId);
@@ -158,7 +185,10 @@ function applyEvent(state: SessionState, event: ReplayEvent): SessionState {
             driven.outcome,
           );
           match = matchReducer(match, {
-            type: "line.resolved", round: driven.round, slot: acting, outcome: driven.outcome,
+            type: "line.resolved",
+            round: driven.round,
+            slot: acting,
+            outcome: driven.outcome,
           });
         }
       }
@@ -185,8 +215,14 @@ export function advanceSession(
   }
   switch (command.type) {
     case "deal": {
-      const chosen = selectOptions(state.trace.setup, state.cursors, match.round.round, command.slot,
-        match.round.players[command.slot].seenLineIds, pool);
+      const chosen = selectOptions(
+        state.trace.setup,
+        state.cursors,
+        match.round.round,
+        command.slot,
+        match.round.players[command.slot].seenLineIds,
+        pool,
+      );
       lines = rememberLines(lines, chosen.lines);
       action = { type: "deal", deal: chosen.deal };
       break;
@@ -203,14 +239,27 @@ export function advanceSession(
       action = { type: "round.end", deals: [first.deal, second.deal] };
       break;
     }
-    case "tuning": action = { type: "tuning", tuning: copyTuning(command.tuning) }; break;
-    case "taunt": action = { ...command }; break;
-    case "input": action = { type: "input", input: { ...command.input } }; break;
-    default: action = { ...command };
+    case "tuning":
+      action = { type: "tuning", tuning: copyTuning(command.tuning) };
+      break;
+    case "taunt":
+      action = { ...command };
+      break;
+    case "input":
+      action = { type: "input", input: { ...command.input } };
+      break;
+    default:
+      action = { ...command };
   }
-  return applyEvent({ ...state, trace: { ...state.trace, lines } }, {
-    seq: state.trace.events.length, round: match.round.round, at, action,
-  });
+  return applyEvent(
+    { ...state, trace: { ...state.trace, lines } },
+    {
+      seq: state.trace.events.length,
+      round: match.round.round,
+      at,
+      action,
+    },
+  );
 }
 
 /** No content lookup, browser clock, storage access or trusted final scores. */

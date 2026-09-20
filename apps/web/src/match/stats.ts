@@ -46,9 +46,10 @@ export function recordLineStats(
   outcome: LineOutcome,
 ): MatchStats {
   const previous = stats[slot];
-  const biggestHit = !previous.biggestHit || outcome.damage > previous.biggestHit.damage
-    ? { damage: outcome.damage, round, tier: outcome.tier }
-    : previous.biggestHit;
+  const biggestHit =
+    !previous.biggestHit || outcome.damage > previous.biggestHit.damage
+      ? { damage: outcome.damage, round, tier: outcome.tier }
+      : previous.biggestHit;
   const next: PlayerMatchStats = {
     completedLines: previous.completedLines + 1,
     characters: previous.characters + characterCount,

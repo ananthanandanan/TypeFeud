@@ -39,16 +39,12 @@ export function FighterBar({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div
-        className={`flex items-baseline justify-between ${mirrored ? "flex-row-reverse" : ""}`}
-      >
+      <div className={`flex items-baseline justify-between ${mirrored ? "flex-row-reverse" : ""}`}>
         <span className={`text-xl font-extrabold tracking-[0.14em] ${accent}`}>{name}</span>
         <span className={`text-[15px] font-bold tabular-nums ${accent}`}>{Math.round(hp)}</span>
       </div>
 
-      <div
-        className={`border-edge-soft bg-panel flex h-5 border-2 ${mirrored ? "flex-row-reverse" : ""}`}
-      >
+      <div className={`border-edge-soft bg-panel flex h-5 border-2 ${mirrored ? "flex-row-reverse" : ""}`}>
         <div
           className={`${fill} transition-[width] duration-300 ease-out`}
           style={{ width: `${Math.max(0, Math.min(100, (hp / max) * 100))}%` }}

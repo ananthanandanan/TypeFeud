@@ -14,10 +14,7 @@
  * this reason, so the interval below is not the tick loop invariant 8 forbids.
  */
 
-import {
-  activeLine, uncorrectedErrors,
-  type LineOutcome, type RoundName, type RoundState,
-} from "@typefeud/game";
+import { activeLine, uncorrectedErrors, type LineOutcome, type RoundName, type RoundState } from "@typefeud/game";
 import { useEffect, useState } from "react";
 import { FighterBar } from "@/components/fighter-bar";
 
@@ -74,17 +71,11 @@ export function MatchHud({
       />
 
       <div className="flex flex-col items-center gap-1.5">
-        <span className="text-muted text-xs tracking-[0.32em]">
-          ROUND {ROUND_NUMBER[round.round]}
-        </span>
-        <span className="text-[26px] font-extrabold tracking-[0.22em]">
-          {ROUND_TITLE[round.round]}
-        </span>
+        <span className="text-muted text-xs tracking-[0.32em]">ROUND {ROUND_NUMBER[round.round]}</span>
+        <span className="text-[26px] font-extrabold tracking-[0.22em]">{ROUND_TITLE[round.round]}</span>
         {/* The slot keeps its height either way, so the HUD does not jump
             when a round ends (SPEC §6.2's no-layout-shift rule). */}
-        <div className="flex h-11 items-center">
-          {live ? <RoundClock round={round} startedAt={startedAt} /> : null}
-        </div>
+        <div className="flex h-11 items-center">{live ? <RoundClock round={round} startedAt={startedAt} /> : null}</div>
       </div>
 
       <div className="flex flex-col gap-2.5">
@@ -118,13 +109,7 @@ export function MatchHud({
  * It lives outside the typing panel's bounding box, on the opponent's side, so
  * rule 2 of the design system holds: nothing here can reach the player's text.
  */
-function OpponentActivity({
-  player,
-  outcome,
-}: {
-  player: RoundState["players"][number];
-  outcome: LineOutcome | null;
-}) {
+function OpponentActivity({ player, outcome }: { player: RoundState["players"][number]; outcome: LineOutcome | null }) {
   const line = activeLine(player);
   const progress = player.progress;
   const landed = outcome !== null;
@@ -147,7 +132,10 @@ function OpponentActivity({
             {`TYPING · ${typed} / ${line.text.length}`}
             {/* Never hue alone (SPEC §6.7): the count says it, not the colour. */}
             {errors > 0 ? (
-              <span className="text-error"> · {errors} ERROR{errors > 1 ? "S" : ""}</span>
+              <span className="text-error">
+                {" "}
+                · {errors} ERROR{errors > 1 ? "S" : ""}
+              </span>
             ) : null}
           </>
         ) : (
@@ -176,8 +164,7 @@ function RoundClock({ round, startedAt }: { round: RoundState; startedAt: number
   useEffect(() => {
     if (startedAt === null || round.status === "over") return;
 
-    const paint = () =>
-      setRemaining(Math.max(0, round.endsAt - (performance.now() - startedAt)));
+    const paint = () => setRemaining(Math.max(0, round.endsAt - (performance.now() - startedAt)));
 
     paint();
     const id = window.setInterval(paint, 100);

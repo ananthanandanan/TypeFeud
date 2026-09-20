@@ -36,8 +36,7 @@ export const DEFAULT_FLAGS: DevFlags = {
 
 type RawParams = Record<string, string | string[] | undefined>;
 
-const first = (value: string | string[] | undefined): string | undefined =>
-  Array.isArray(value) ? value[0] : value;
+const first = (value: string | string[] | undefined): string | undefined => (Array.isArray(value) ? value[0] : value);
 
 /**
  * `?flag`, `?flag=1` and `?flag=true` all mean on; anything else means off.

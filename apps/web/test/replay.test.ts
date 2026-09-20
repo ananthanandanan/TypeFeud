@@ -1,23 +1,45 @@
 import { describe, expect, it } from "vitest";
 import { POOL, type ContentPool } from "@typefeud/content";
 import { DEFAULT_TUNING, type PlayerSlot, type ReplayRecord, type ReplaySetup, type RoundName } from "@typefeud/game";
-import { advanceSession, createSession, replaySession, type SessionCommand, type SessionState } from "../src/match/session";
+import {
+  advanceSession,
+  createSession,
+  replaySession,
+  type SessionCommand,
+  type SessionState,
+} from "../src/match/session";
 import { selectOptions } from "../src/match/selection";
 
 const tuning = { ...DEFAULT_TUNING, speedMultMin: 1, speedMultMax: 1 };
 const pool: ContentPool = (["trigger", "debate", "roast", "fight"] as const).flatMap((round) =>
-  (["jab", "combo", "haymaker"] as const).flatMap((tier, t) => Array.from({ length: 8 }, (_, i) => ({
-    id: `test-${round}-${tier}-${String(i).padStart(3, "0")}`,
-    arena: "test", round, tier, text: `${"ABC"[t]} line ${i}`, wordCount: 3, tags: [],
-  }))),
+  (["jab", "combo", "haymaker"] as const).flatMap((tier, t) =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id: `test-${round}-${tier}-${String(i).padStart(3, "0")}`,
+      arena: "test",
+      round,
+      tier,
+      text: `${"ABC"[t]} line ${i}`,
+      wordCount: 3,
+      tags: [],
+    })),
+  ),
 );
-const setup: ReplaySetup = { sessionId: "test-session", seed: 4821, arena: "test", firstRound: "trigger", tuning, recent: [[], []] };
+const setup: ReplaySetup = {
+  sessionId: "test-session",
+  seed: 4821,
+  arena: "test",
+  firstRound: "trigger",
+  tuning,
+  recent: [[], []],
+};
 
 function runner(config = setup, source = pool) {
   let state = createSession(config, source);
   let now = 0;
   return {
-    get state() { return state; },
+    get state() {
+      return state;
+    },
     send(command: SessionCommand, delta = 10) {
       now += delta;
       state = advanceSession(state, command, now, source);
@@ -42,7 +64,13 @@ function runner(config = setup, source = pool) {
 }
 
 function logical(state: SessionState) {
-  return { match: state.match, cursors: state.cursors, resolved: state.resolved, tuning: state.tuning, stats: state.stats };
+  return {
+    match: state.match,
+    cursors: state.cursors,
+    resolved: state.resolved,
+    tuning: state.tuning,
+    stats: state.stats,
+  };
 }
 
 describe("recording and replay", () => {
@@ -114,7 +142,9 @@ describe("recording and replay", () => {
     run.send({ type: "arena.done" }, 3000);
     run.type(0);
     const before = structuredClone(run.state);
-    source.forEach((line) => { line.text = "changed content"; });
+    source.forEach((line) => {
+      line.text = "changed content";
+    });
     expect(logical(replaySession(run.state.trace))).toEqual(logical(before));
     expect(run.state.trace.lines[0]?.text).not.toBe("changed content");
   });
@@ -172,17 +202,20 @@ describe("recording and replay", () => {
     expect(ended.trace.events.at(-1)?.action).toEqual({ type: "input", input: { type: "clock" } });
   });
 
-  it.each(["trigger", "debate", "roast", "fight"] as RoundName[])("replays the %s round shortcut through results", (firstRound) => {
-    const run = runner({ ...setup, firstRound, arena: "group_chat", tier: "haymaker" }, POOL);
-    run.send({ type: "arena.done" }, 3000);
-    while (run.state.match.phase !== "results") {
-      run.deadline();
-      run.send({ type: "round.end" });
-      if (run.state.match.phase === "intermission") run.send({ type: "intermission.done" }, 10000);
-    }
-    expect(logical(replaySession(run.state.trace))).toEqual(logical(run.state));
-    expect(run.state.match.outcome?.winner).toBeNull();
-  });
+  it.each(["trigger", "debate", "roast", "fight"] as RoundName[])(
+    "replays the %s round shortcut through results",
+    (firstRound) => {
+      const run = runner({ ...setup, firstRound, arena: "group_chat", tier: "haymaker" }, POOL);
+      run.send({ type: "arena.done" }, 3000);
+      while (run.state.match.phase !== "results") {
+        run.deadline();
+        run.send({ type: "round.end" });
+        if (run.state.match.phase === "intermission") run.send({ type: "intermission.done" }, 10000);
+      }
+      expect(logical(replaySession(run.state.trace))).toEqual(logical(run.state));
+      expect(run.state.match.outcome?.winner).toBeNull();
+    },
+  );
 });
 
 describe("session selection", () => {

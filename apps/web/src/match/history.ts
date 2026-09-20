@@ -23,14 +23,29 @@ const emptyHistory = (): RecentHistory => ({ version: 1, matches: [] });
 export function parseHistory(raw: string | null): RecentHistory {
   try {
     const value: unknown = JSON.parse(raw ?? "null");
-    if (!value || typeof value !== "object" || !("version" in value) || value.version !== 1 ||
-      !("matches" in value) || !Array.isArray(value.matches) || value.matches.length > 3) return emptyHistory();
+    if (
+      !value ||
+      typeof value !== "object" ||
+      !("version" in value) ||
+      value.version !== 1 ||
+      !("matches" in value) ||
+      !Array.isArray(value.matches) ||
+      value.matches.length > 3
+    )
+      return emptyHistory();
     const matches: HistoryEntry[] = [];
     for (const entry of value.matches) {
-      if (!entry || typeof entry !== "object" || typeof entry.sessionId !== "string" || !entry.sessionId ||
-        !Array.isArray(entry.lineIds) || !entry.lineIds.every((id: unknown) => typeof id === "string" && id.length > 0) ||
+      if (
+        !entry ||
+        typeof entry !== "object" ||
+        typeof entry.sessionId !== "string" ||
+        !entry.sessionId ||
+        !Array.isArray(entry.lineIds) ||
+        !entry.lineIds.every((id: unknown) => typeof id === "string" && id.length > 0) ||
         ("wpm" in entry && (typeof entry.wpm !== "number" || !Number.isFinite(entry.wpm) || entry.wpm < 0)) ||
-        matches.some((match) => match.sessionId === entry.sessionId)) return emptyHistory();
+        matches.some((match) => match.sessionId === entry.sessionId)
+      )
+        return emptyHistory();
       matches.push({
         sessionId: entry.sessionId,
         lineIds: [...new Set<string>(entry.lineIds)],
@@ -47,11 +62,14 @@ export function appendHistory(history: RecentHistory, entry: HistoryEntry): Rece
   if (history.matches.some((match) => match.sessionId === entry.sessionId)) return history;
   return {
     version: 1,
-    matches: [...history.matches, {
-      sessionId: entry.sessionId,
-      lineIds: [...new Set(entry.lineIds)],
-      ...(entry.wpm === undefined ? {} : { wpm: entry.wpm }),
-    }].slice(-3),
+    matches: [
+      ...history.matches,
+      {
+        sessionId: entry.sessionId,
+        lineIds: [...new Set(entry.lineIds)],
+        ...(entry.wpm === undefined ? {} : { wpm: entry.wpm }),
+      },
+    ].slice(-3),
   };
 }
 
@@ -60,7 +78,7 @@ export function recentLineIds(history: RecentHistory): string[] {
 }
 
 export function recentWpm(history: RecentHistory): number[] {
-  return history.matches.flatMap((match) => match.wpm === undefined ? [] : [match.wpm]);
+  return history.matches.flatMap((match) => (match.wpm === undefined ? [] : [match.wpm]));
 }
 
 /** The getter also catches browsers that throw when accessing localStorage. */

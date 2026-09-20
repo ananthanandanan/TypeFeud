@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { POOL, type ContentPool } from "@typefeud/content";
 import { DEFAULT_TUNING, type Line, type ReplaySetup } from "@typefeud/game";
-import {
-  GHOST_SNAPSHOT_INTERVAL_MS, GHOST_TRACES, buildGhostSchedule, ghostSeed,
-} from "../src/match/ghost";
+import { GHOST_SNAPSHOT_INTERVAL_MS, GHOST_TRACES, buildGhostSchedule, ghostSeed } from "../src/match/ghost";
 import { advanceSession, createSession, replaySession } from "../src/match/session";
 
 const options: [Line, Line, Line] = [
   { id: "a-jab", tier: "jab", text: "Wet cardboard.", wordCount: 2 },
   { id: "b-combo", tier: "combo", text: "That take has the structural integrity of wet cardboard.", wordCount: 9 },
-  { id: "c-haymaker", tier: "haymaker", text: "You typed all of that and still said nothing at all, which is a skill.", wordCount: 14 },
+  {
+    id: "c-haymaker",
+    tier: "haymaker",
+    text: "You typed all of that and still said nothing at all, which is a skill.",
+    wordCount: 14,
+  },
 ];
 
 const build = (seed: number, from = options) => buildGhostSchedule({ seed, options: from });
@@ -56,9 +59,7 @@ describe("the ghost schedule", () => {
     // than a live opponent will ever send (SPEC §4.3).
     for (let seed = 0; seed < 60; seed++) {
       const { events } = build(seed);
-      const windows = events
-        .slice(0, -1)
-        .map((event) => Math.floor(event.dueAt / GHOST_SNAPSHOT_INTERVAL_MS));
+      const windows = events.slice(0, -1).map((event) => Math.floor(event.dueAt / GHOST_SNAPSHOT_INTERVAL_MS));
       expect(new Set(windows).size).toBe(windows.length);
     }
   });
@@ -92,14 +93,25 @@ describe("the ghost schedule", () => {
 
 const tuning = { ...DEFAULT_TUNING, speedMultMin: 1, speedMultMax: 1 };
 const pool: ContentPool = (["trigger", "debate", "roast", "fight"] as const).flatMap((round) =>
-  (["jab", "combo", "haymaker"] as const).flatMap((tier, t) => Array.from({ length: 8 }, (_, i) => ({
-    id: `test-${round}-${tier}-${String(i).padStart(3, "0")}`,
-    arena: "test", round, tier, text: `${"ABC"[t]} line ${i}`, wordCount: 3, tags: [],
-  }))),
+  (["jab", "combo", "haymaker"] as const).flatMap((tier, t) =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id: `test-${round}-${tier}-${String(i).padStart(3, "0")}`,
+      arena: "test",
+      round,
+      tier,
+      text: `${"ABC"[t]} line ${i}`,
+      wordCount: 3,
+      tags: [],
+    })),
+  ),
 );
 const setup: ReplaySetup = {
-  sessionId: "ghost-session", seed: 20_260_907, arena: "test",
-  firstRound: "debate", tuning, recent: [[], []],
+  sessionId: "ghost-session",
+  seed: 20_260_907,
+  arena: "test",
+  firstRound: "debate",
+  tuning,
+  recent: [[], []],
 };
 
 /**
@@ -123,9 +135,15 @@ function playGhost(rounds = 4) {
         options: state.match.round.players[1].options,
       });
       for (const event of events) {
-        state = advanceSession(state, {
-          type: "input", input: { type: "progress", slot: 1, ...event.progress },
-        }, at(started + event.dueAt), pool);
+        state = advanceSession(
+          state,
+          {
+            type: "input",
+            input: { type: "progress", slot: 1, ...event.progress },
+          },
+          at(started + event.dueAt),
+          pool,
+        );
       }
       if (state.match.round.status !== "live") break;
       state = advanceSession(state, { type: "deal", slot: 1 }, at(now + tuning.impactBeatMs), pool);
@@ -134,8 +152,12 @@ function playGhost(rounds = 4) {
     }
     // Either the deadline closes the round or a knockout already has.
     if (state.match.round.status === "live") {
-      state = advanceSession(state, { type: "input", input: { type: "clock" } },
-        at(started + state.match.round.endsAt), pool);
+      state = advanceSession(
+        state,
+        { type: "input", input: { type: "clock" } },
+        at(started + state.match.round.endsAt),
+        pool,
+      );
     }
     state = advanceSession(state, { type: "round.end" }, at(now + 1), pool);
     if (state.match.phase === "intermission") {
@@ -152,8 +174,7 @@ describe("a full match against the ghost", () => {
     // The player never typed: an unanswered ghost has to win, which is the
     // whole point of #7 — before it, a silent player drew every round.
     expect(state.match.outcome?.winner).toBe(1);
-    expect(state.match.results.map((result) => result.round))
-      .toEqual(["debate", "roast", "fight"]);
+    expect(state.match.results.map((result) => result.round)).toEqual(["debate", "roast", "fight"]);
     expect(state.match.results.every((result) => result.hp[0] < result.hp[1])).toBe(true);
   });
 

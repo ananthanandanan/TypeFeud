@@ -8,15 +8,7 @@
  */
 
 import { DEFAULT_TUNING, type Tuning } from "@typefeud/game";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 interface TuningStore {
   tuning: Tuning;
@@ -34,9 +26,7 @@ export function useTuning(): TuningStore {
   return store;
 }
 
-type TuningPath =
-  | Exclude<keyof Tuning, "tierBaseDamage">
-  | `tierBaseDamage.${keyof Tuning["tierBaseDamage"]}`;
+type TuningPath = Exclude<keyof Tuning, "tierBaseDamage"> | `tierBaseDamage.${keyof Tuning["tierBaseDamage"]}`;
 
 const FIELDS: { path: TuningPath; label: string; step: number }[] = [
   { path: "tierBaseDamage.jab", label: "base · jab", step: 1 },
@@ -68,13 +58,7 @@ function write(tuning: Tuning, path: TuningPath, value: number): Tuning {
   return { ...tuning, [path]: value };
 }
 
-export function TuningProvider({
-  children,
-  initiallyOpen = false,
-}: {
-  children: ReactNode;
-  initiallyOpen?: boolean;
-}) {
+export function TuningProvider({ children, initiallyOpen = false }: { children: ReactNode; initiallyOpen?: boolean }) {
   const [tuning, setTuning] = useState<Tuning>(DEFAULT_TUNING);
   const [open, setOpen] = useState(initiallyOpen);
 
@@ -93,10 +77,7 @@ export function TuningProvider({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const store = useMemo(
-    () => ({ tuning, set, reset, open, setOpen }),
-    [tuning, set, reset, open],
-  );
+  const store = useMemo(() => ({ tuning, set, reset, open, setOpen }), [tuning, set, reset, open]);
 
   return <TuningContext.Provider value={store}>{children}</TuningContext.Provider>;
 }

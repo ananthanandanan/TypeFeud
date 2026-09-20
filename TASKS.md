@@ -32,9 +32,10 @@ appear below.
 **Exit criterion:** typing feels good. This is 90% of the game. If it does not feel
 good here, no amount of animation will save it.
 
-- [ ] **[T-01 #1](https://github.com/ananthanandanan/TypeFeud/issues/1)** `chore: add CI and repo-wide linting` `S`
+- [x] **[T-01 #1](https://github.com/ananthanandanan/TypeFeud/issues/1)** `chore: add CI and repo-wide linting` `S`
   - GitHub Actions running `pnpm test && pnpm typecheck && pnpm build` on push and PR.
   - Extend eslint + prettier beyond `apps/web` and wire `lint` into the turbo pipeline.
+  - **Done locally, 2026-09-20.** `.github/workflows/ci.yml` uses read-only permissions, concurrency cancellation, Node 22 and the exact `pnpm@11.18.0` project pin. Pushes and PRs run repo-wide lint/format, 188 tests, all workspace typechecks, content validation and the production build as separate steps. Every workspace now owns a Turbo `lint` task; the root flat config covers non-Next TypeScript while `apps/web` retains Next's rules. Prettier establishes the first repository-wide source/config baseline and is enforced by `pnpm lint`.
 
 - [x] **[T-02 #2](https://github.com/ananthanandanan/TypeFeud/issues/2)** `feat: typing surface with live correctness tracking` `L`
   - **Engine:** `applyKeystroke` — a wrong character marks and advances, it never blocks; backspace repairs and costs time only. Never penalise both the error and the correction (SPEC §2.4).

@@ -67,7 +67,12 @@ describe("resolveLine — damage (SPEC §2.5)", () => {
   });
 
   it("scales with the tier", () => {
-    const state = round({ players: [player({ options: [HAYMAKER, HAYMAKER, HAYMAKER], progress: createLineProgress(HAYMAKER.id) }), player({ slot: 1 })] });
+    const state = round({
+      players: [
+        player({ options: [HAYMAKER, HAYMAKER, HAYMAKER], progress: createLineProgress(HAYMAKER.id) }),
+        player({ slot: 1 }),
+      ],
+    });
     const { outcome } = clean(state);
     expect(outcome.tier).toBe("haymaker");
     expect(outcome.damage).toBe(31);
@@ -87,10 +92,7 @@ describe("resolveLine — damage (SPEC §2.5)", () => {
     let state = round();
     state = applyKeystroke(state, { t: 100, key: "X" });
     state = applyKeystroke(state, { t: 200, key: BACKSPACE });
-    const rest = Array.from(LINE.text).reduce(
-      (acc, key, i) => applyKeystroke(acc, { t: 300 + i * 200, key }),
-      state,
-    );
+    const rest = Array.from(LINE.text).reduce((acc, key, i) => applyKeystroke(acc, { t: 300 + i * 200, key }), state);
     const { outcome } = resolveLine(rest, { now: 300 + (LINE.text.length - 1) * 200 });
     expect(outcome.uncorrectedErrors).toBe(0);
     expect(outcome.selfDamage).toBe(0);
@@ -98,10 +100,7 @@ describe("resolveLine — damage (SPEC §2.5)", () => {
 
   it("takes its tunables from the argument, not the module constants", () => {
     const tuned = resolveLine(
-      Array.from(LINE.text).reduce(
-        (acc, key, i) => applyKeystroke(acc, { t: 200 + i * 200, key }),
-        round(),
-      ),
+      Array.from(LINE.text).reduce((acc, key, i) => applyKeystroke(acc, { t: 200 + i * 200, key }), round()),
       { now: 200 + (LINE.text.length - 1) * 200 },
       { ...DEFAULT_TUNING, tierBaseDamage: { ...DEFAULT_TUNING.tierBaseDamage, jab: 60 } },
     );

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BACKSPACE, applyKeystroke } from "../src/engine";
-import {
-  createLineProgress,
-  displayLine,
-  lineCharStates,
-  uncorrectedErrors,
-} from "../src/progress";
+import { createLineProgress, displayLine, lineCharStates, uncorrectedErrors } from "../src/progress";
 import type { KeyEvent, Line, PlayerState, RoundState } from "../src/types";
 
 const LINE: Line = {
@@ -160,7 +155,12 @@ describe("displayLine — what the surface draws (SPEC §6.2)", () => {
   it("shows the key the player pressed at a wrong character, not the expected one", () => {
     const after = type(round(), "yiu");
     const drawn = displayLine(LINE.text, progressOf(after));
-    expect(drawn.slice(0, 3).map((c) => c.char).join("")).toBe("yiu");
+    expect(
+      drawn
+        .slice(0, 3)
+        .map((c) => c.char)
+        .join(""),
+    ).toBe("yiu");
     expect(drawn[1]!.state).toBe("wrong");
   });
 

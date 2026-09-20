@@ -47,25 +47,15 @@ export function OptionCards({
             style={locked ? { boxShadow: "0 0 28px rgba(86,180,233,0.28)" } : undefined}
           >
             <div className="flex items-baseline justify-between">
-              <span
-                className={`text-xs font-extrabold tracking-[0.22em] ${
-                  locked ? "text-you" : "text-muted"
-                }`}
-              >
+              <span className={`text-xs font-extrabold tracking-[0.22em] ${locked ? "text-you" : "text-muted"}`}>
                 {TIER_LABEL[option.tier]}
               </span>
-              <span
-                className={`text-[11px] tracking-[0.14em] ${
-                  locked ? "text-you font-bold" : "text-muted"
-                }`}
-              >
+              <span className={`text-[11px] tracking-[0.14em] ${locked ? "text-you font-bold" : "text-muted"}`}>
                 {locked ? "LOCKED IN" : `${baseDamage[option.tier]} DMG`}
               </span>
             </div>
 
-            <p className={`text-[15px] leading-normal ${locked ? "text-text" : "text-muted"}`}>
-              {option.text}
-            </p>
+            <p className={`text-[15px] leading-normal ${locked ? "text-text" : "text-muted"}`}>{option.text}</p>
           </div>
         );
       })}

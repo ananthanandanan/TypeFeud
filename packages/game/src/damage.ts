@@ -43,11 +43,7 @@ export function computeDamage(input: DamageInput, tuning: Tuning = DEFAULT_TUNIN
   const base = tuning.tierBaseDamage[input.tier];
   const multiplier = input.special ? tuning.specialDamageMult : 1;
   return {
-    damage:
-      base *
-      accuracyMult(input.uncorrectedErrors, tuning) *
-      speedMult(input.lineWpm, tuning) *
-      multiplier,
+    damage: base * accuracyMult(input.uncorrectedErrors, tuning) * speedMult(input.lineWpm, tuning) * multiplier,
     selfDamage: input.uncorrectedErrors * tuning.selfDamagePerError,
   };
 }

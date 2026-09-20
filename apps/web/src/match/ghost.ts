@@ -110,7 +110,7 @@ export interface GhostSchedule {
 export function ghostSeed(seed: number, round: RoundName, generation: number): number {
   let mixed = (seed ^ 0x5f356495) >>> 0;
   for (const code of `${round}:${generation}`) {
-    mixed = (Math.imul(mixed ^ code.charCodeAt(0), 0x01000193) >>> 0);
+    mixed = Math.imul(mixed ^ code.charCodeAt(0), 0x01000193) >>> 0;
   }
   return mixed >>> 0;
 }
@@ -162,12 +162,7 @@ interface GhostKeystroke {
  * charged nothing, the ghost that leaves them arrives sooner and pays at
  * resolution.
  */
-function keystrokes(
-  line: Line,
-  trace: GhostTrace,
-  random: () => number,
-  startAt: number,
-): GhostKeystroke[] {
+function keystrokes(line: Line, trace: GhostTrace, random: () => number, startAt: number): GhostKeystroke[] {
   // 5 characters to a word is the standard WPM convention, the same one
   // `wpm()` in packages/game uses. Both ends must agree or the ghost's
   // measured speed would not be the speed it was authored at.

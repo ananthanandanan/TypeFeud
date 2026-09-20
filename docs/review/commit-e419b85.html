@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Walkthrough — CI and repository-wide linting</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --panel: #161b22;
+    --panel-2: #1c232c;
+    --border: #2a313c;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #79c0ff;
+    --accent-2: #a5d6ff;
+    --good: #56d364;
+    --warn: #d29922;
+    --bad:  #f85149;
+    --code-bg: #0b0f14;
+    --tag-bg: #1f2630;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 15px; line-height: 1.55;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  code { background: var(--tag-bg); padding: 1px 5px; border-radius: 4px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    padding: 14px 16px; border-radius: 8px; overflow-x: auto;
+    line-height: 1.45;
+  }
+  pre code { background: transparent; padding: 0; }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+  nav.sidebar {
+    position: sticky; top: 0; align-self: flex-start;
+    width: 280px; height: 100vh; overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--border);
+    padding: 28px 18px;
+  }
+  nav.sidebar .brand { font-weight: 600; font-size: 15px; margin-bottom: 4px; color: var(--accent-2); }
+  nav.sidebar .subtitle { font-size: 12px; color: var(--muted); margin-bottom: 22px; }
+  nav.sidebar ol { list-style: none; padding: 0; margin: 0; counter-reset: section; }
+  nav.sidebar ol li { counter-increment: section; margin: 2px 0; }
+  nav.sidebar ol li a {
+    display: block; padding: 7px 10px; border-radius: 6px;
+    color: var(--text); font-size: 13px;
+    border-left: 2px solid transparent;
+  }
+  nav.sidebar ol li a::before {
+    content: counter(section, decimal-leading-zero) "  ";
+    color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  nav.sidebar ol li a:hover { background: var(--panel-2); text-decoration: none; }
+  nav.sidebar ol li a.active {
+    background: var(--panel-2); border-left-color: var(--accent);
+    color: var(--accent-2);
+  }
+
+  main { flex: 1; padding: 40px 56px 120px; max-width: 980px; }
+  header.page-header { margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+  header.page-header h1 { margin: 0 0 6px; font-size: 26px; }
+  header.page-header .meta { color: var(--muted); font-size: 13px; }
+  header.page-header .meta span + span::before { content: " · "; color: var(--border); }
+
+  section.story-section {
+    padding: 38px 0; border-bottom: 1px solid var(--border);
+  }
+  section.story-section:last-of-type { border-bottom: none; }
+  section.story-section h2 {
+    margin: 0 0 6px; font-size: 22px; color: var(--accent-2);
+  }
+  section.story-section .section-tag {
+    display: inline-block; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 18px;
+  }
+  section.story-section h3 {
+    margin: 28px 0 10px; font-size: 16px; color: var(--text);
+  }
+  section.story-section p { margin: 10px 0; }
+
+  /* Pillboxes */
+  .pillrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    background: var(--tag-bg); border: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .pill.good { color: var(--good); border-color: rgba(86,211,100,0.35); }
+  .pill.warn { color: var(--warn); border-color: rgba(210,153,34,0.35); }
+  .pill.bad  { color: var(--bad);  border-color: rgba(248,81,73,0.35); }
+  .pill.accent { color: var(--accent-2); border-color: rgba(121,192,255,0.35); }
+
+  /* Why / Decision blocks */
+  .callout {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px; border-radius: 6px;
+    margin: 14px 0;
+  }
+  .callout.why    { border-left-color: var(--accent); }
+  .callout.tradeoff { border-left-color: var(--warn); }
+  .callout.deferred { border-left-color: var(--muted); }
+  .callout strong { color: var(--accent-2); }
+  .callout.tradeoff strong { color: var(--warn); }
+  .callout.deferred strong { color: var(--muted); }
+
+  /* Tables */
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left; padding: 9px 12px;
+    border-bottom: 1px solid var(--border); vertical-align: top;
+  }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td code { white-space: nowrap; }
+
+  /* Diagrams (ASCII-ish) */
+  .diagram {
+    background: var(--code-bg); border: 1px solid var(--border);
+    padding: 18px; border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.5; color: var(--accent-2);
+    overflow-x: auto; white-space: pre;
+  }
+
+  .file-ref {
+    display: inline-block; font-size: 12px; color: var(--muted);
+    background: var(--tag-bg); padding: 2px 8px; border-radius: 4px;
+    margin-right: 6px;
+  }
+
+  ul.compact { margin: 6px 0; padding-left: 22px; }
+  ul.compact li { margin: 4px 0; }
+
+  .toc-toggle { display: none; }
+
+  @media (max-width: 880px) {
+    .layout { flex-direction: column; }
+    nav.sidebar { position: relative; width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 24px 20px 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand">TypeFeud / T-01</div>
+    <div class="subtitle">CI and repository-wide linting</div>
+    <ol id="toc">
+      <li><a href="#context">The starting point</a></li>
+      <li><a href="#scope">What was implemented</a></li>
+      <li><a href="#shape">The verification flow</a></li>
+      <li><a href="#workflow">GitHub Actions job</a></li>
+      <li><a href="#lint">Lint across the monorepo</a></li>
+      <li><a href="#format">Formatting baseline</a></li>
+      <li><a href="#decisions">Key decisions</a></li>
+      <li><a href="#deferred">What remains</a></li>
+      <li><a href="#tests">How it was verified</a></li>
+      <li><a href="#review">Reviewer's checklist</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="page-header">
+      <h1>CI and repository-wide linting</h1>
+      <div class="meta">
+        <span>T-01 · issue #1 · no PR yet</span>
+        <span>branch <code>main</code></span>
+        <span>working tree above <code>e419b85</code></span>
+      </div>
+      <div class="pillrow" style="margin-top:14px;">
+        <span class="pill good">implemented locally</span>
+        <span class="pill good">all local checks passed</span>
+        <span class="pill warn">uncommitted</span>
+        <span class="pill warn">GitHub run pending</span>
+      </div>
+    </header>
+
+    <section class="story-section" id="context">
+      <span class="section-tag">Where we were</span>
+      <h2>Quality checks existed, but only as manual commands</h2>
+      <p>
+        TypeFeud already had tests, TypeScript checks, content validation, and a production build. The web app also
+        had Next.js lint rules. What it did not have was an automatic gate that ran those contracts on every push and
+        pull request, or a common lint and formatting contract for the server and shared packages.
+      </p>
+      <p>
+        That meant a developer could merge code without GitHub proving that the full monorepo still passed. It also
+        meant four of the five workspaces had no <code>lint</code> command for Turbo to invoke.
+      </p>
+      <div class="callout why">
+        <strong>Why this work matters:</strong> the repository already depended on several independent quality checks;
+        CI turns them from a remembered local routine into one repeatable merge contract.
+      </div>
+    </section>
+
+    <section class="story-section" id="scope">
+      <span class="section-tag">What changed</span>
+      <h2>One automated gate, backed by repository-wide tooling</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Role</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code>.github/workflows/ci.yml</code></td><td>Runs the complete verification contract on pushes and pull requests.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td><code>eslint.config.mjs</code></td><td>Supplies recommended JavaScript and TypeScript rules outside the web app.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td><code>package.json</code></td><td>Combines Turbo linting with the Prettier check and pins required tooling.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td><code>turbo.json</code></td><td>Adds dependency-aware ordering for workspace lint tasks.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td><code>.prettierrc.json</code></td><td>Defines the two-space, double-quote, semicolon, 120-column format contract.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td><code>.prettierignore</code></td><td>Excludes generated output, design/plan artifacts, Markdown, and the lockfile.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td>Workspace manifests</td><td>Add <code>eslint .</code> to server, game, content, and protocol.</td><td><span class="pill good">implemented</span></td></tr>
+          <tr><td>GitHub Actions</td><td>Execute the new workflow on GitHub infrastructure.</td><td><span class="pill warn">waiting for push</span></td></tr>
+        </tbody>
+      </table>
+      <p>
+        The large source-file diff is mostly the first Prettier baseline: 37 existing source and configuration files
+        were normalized so the new format check starts from a clean repository.
+      </p>
+    </section>
+
+    <section class="story-section" id="shape">
+      <span class="section-tag">Architecture</span>
+      <h2>The verification flow</h2>
+      <p>
+        A push or pull request starts one read-only <code>verify</code> job. The job installs the repository's pinned
+        pnpm and Node versions, then runs five named checks in sequence. The named steps make a failure visible without
+        opening raw logs to discover which contract broke.
+      </p>
+      <div class="diagram">
+  push / pull_request
+           │
+           ▼
+  ┌───────────────────────────────┐
+  │ CI / verify                   │
+  │ ubuntu-latest · 15 min limit  │
+  │ contents: read                │
+  └──────────────┬────────────────┘
+                 │
+                 ▼
+     checkout → pnpm + Node 22
+                 │
+      ┌──────────┴──────────┐
+      ▼                     ▼
+  pnpm lint          exact lockfile required
+      │              pnpm store cached
+      ├─ Turbo ESLint: 5 workspaces
+      └─ Prettier repository check
+                 │
+                 ▼
+             pnpm test
+                 │
+                 ▼
+          pnpm typecheck
+                 │
+                 ▼
+       validate content pools
+                 │
+                 ▼
+             pnpm build
+                 │
+                 ▼
+       one green merge signal
+      </div>
+      <div class="callout why">
+        <strong>Why one job with separate steps:</strong> all checks share one installation, while the GitHub UI still
+        identifies lint, test, typecheck, content, or build as the exact point of failure.
+      </div>
+    </section>
+
+    <section class="story-section" id="workflow">
+      <span class="section-tag">Continuous integration</span>
+      <h2>The GitHub Actions job is intentionally small and strict</h2>
+      <p>
+        <span class="file-ref">.github/workflows/ci.yml</span>
+        The workflow reacts to both <code>push</code> and <code>pull_request</code>. It grants only read access to
+        repository contents and stops after 15 minutes instead of allowing a stuck build to run indefinitely.
+      </p>
+      <h3>Runtime and dependency reproducibility</h3>
+      <ul class="compact">
+        <li><code>actions/checkout@v7</code> checks out the exact revision being verified.</li>
+        <li><code>pnpm/setup@v2</code> reads <code>pnpm@11.18.0</code> from the root package manifest.</li>
+        <li>Node 22 matches the repository's declared engine.</li>
+        <li><code>require-lockfile: true</code> prevents CI from silently resolving a new dependency graph.</li>
+        <li>The pnpm store is cached to avoid redownloading unchanged dependencies.</li>
+        <li>Next.js and Turbo telemetry are disabled in the CI environment.</li>
+      </ul>
+      <h3>Stale-run cancellation</h3>
+      <p>
+        The concurrency key groups runs by workflow and ref. When another commit arrives on the same branch or pull
+        request, the older run is cancelled and the newest revision becomes the only result that matters.
+      </p>
+      <div class="callout tradeoff">
+        <strong>Tradeoff accepted:</strong> the checks run sequentially in one job rather than as parallel jobs. This
+        reuses one setup and keeps the contract easy to read, at the cost of less parallel speed.
+      </div>
+    </section>
+
+    <section class="story-section" id="lint">
+      <span class="section-tag">Monorepo coverage</span>
+      <h2>Lint now reaches every workspace</h2>
+      <p>
+        The root command is now <code>turbo run lint &amp;&amp; pnpm format:check</code>. Turbo first discovers and runs the
+        lint task owned by each workspace. Only after all workspace lint tasks succeed does Prettier check the wider
+        repository.
+      </p>
+      <table>
+        <thead><tr><th>Workspace</th><th>Lint source</th><th>Command</th></tr></thead>
+        <tbody>
+          <tr><td><code>apps/web</code></td><td>Next.js Core Web Vitals + TypeScript rules</td><td><code>eslint</code></td></tr>
+          <tr><td><code>apps/server</code></td><td>Root flat ESLint config</td><td><code>eslint .</code></td></tr>
+          <tr><td><code>packages/game</code></td><td>Root flat ESLint config</td><td><code>eslint .</code></td></tr>
+          <tr><td><code>packages/content</code></td><td>Root flat ESLint config</td><td><code>eslint .</code></td></tr>
+          <tr><td><code>packages/protocol</code></td><td>Root flat ESLint config</td><td><code>eslint .</code></td></tr>
+        </tbody>
+      </table>
+      <div class="callout why">
+        <strong>Why the web app keeps its own config:</strong> Next's Core Web Vitals, React, accessibility, and App
+        Router rules are browser-specific. The shared config covers plain TypeScript without weakening those checks.
+      </div>
+      <p>
+        Turbo's lint task now depends on <code>^lint</code>, so dependency packages are checked before packages that
+        consume them. Generated <code>dist</code>, <code>.next</code>, <code>.turbo</code>, and
+        <code>node_modules</code> directories are ignored by the shared config.
+      </p>
+    </section>
+
+    <section class="story-section" id="format">
+      <span class="section-tag">Consistent source</span>
+      <h2>Prettier establishes a clean baseline</h2>
+      <p>
+        <span class="file-ref">.prettierrc.json</span>
+        Formatting now matches the repository's documented style: two spaces, double quotes, semicolons, trailing
+        commas, and a 120-column width. Developers can use <code>pnpm format</code> to apply it or
+        <code>pnpm format:check</code> to verify it without writing files.
+      </p>
+      <p>
+        The initial run normalized 37 existing source and configuration files. Those edits change wrapping and layout,
+        not game behavior. Keeping the baseline in the same change means the first CI run does not fail immediately on
+        pre-existing formatting differences.
+      </p>
+      <div class="callout tradeoff">
+        <strong>Tradeoff accepted:</strong> the first tooling change has a broad diff. After this one-time baseline,
+        future formatting diffs should be small and attributable to the feature being edited.
+      </div>
+      <div class="callout why">
+        <strong>Why generated and authored documents are excluded:</strong> design, plan, and review HTML files are
+        deliberate artifacts, while build and cache directories are generated. Reformatting either would create noise
+        without improving production TypeScript.
+      </div>
+    </section>
+
+    <section class="story-section" id="decisions">
+      <span class="section-tag">Non-obvious calls</span>
+      <h2>Version choices favor a warning-free install</h2>
+      <h3>ESLint remains on major version 9</h3>
+      <p>
+        ESLint 10 is available, but plugins pulled in by <code>eslint-config-next@16.3.0</code> still declare ESLint 9
+        as their supported maximum. The repository therefore pins ESLint <code>^9.39.5</code> rather than forcing the
+        newer major and accepting peer-dependency warnings on every install.
+      </p>
+      <div class="callout why">
+        <strong>Why:</strong> a clean dependency contract is more valuable than adopting a new lint major before the
+        framework's own plugin set supports it.
+      </div>
+      <h3>The local pnpm cache is ignored</h3>
+      <p>
+        Repairing the local pnpm installation created <code>.pnpm-store/</code> inside the repository. It is now listed
+        in <code>.gitignore</code> alongside <code>node_modules</code>, preventing machine-local cache data from entering
+        commits.
+      </p>
+    </section>
+
+    <section class="story-section" id="deferred">
+      <span class="section-tag">Out of scope and final gate</span>
+      <h2>What remains before Issue #1 is truly closed</h2>
+      <div class="callout deferred">
+        <strong>Commit and push:</strong> all CI and tooling files currently exist only as working-tree changes on
+        <code>main</code>. Until they are committed and pushed, GitHub cannot discover the workflow.
+      </div>
+      <div class="callout deferred">
+        <strong>First hosted run:</strong> after the push, confirm that the first <code>CI / verify</code> run succeeds
+        on GitHub. Local success proves the commands; the hosted run proves the workflow permissions, action setup, and
+        clean-machine installation path.
+      </div>
+      <div class="callout deferred">
+        <strong>ESLint 10:</strong> reconsider the major upgrade when Next.js and its bundled lint plugins advertise
+        compatible peer ranges. It is not required for this CI contract.
+      </div>
+    </section>
+
+    <section class="story-section" id="tests">
+      <span class="section-tag">Verification</span>
+      <h2>Every workflow command passed locally</h2>
+      <table>
+        <thead><tr><th>Command</th><th>Recorded result</th><th>What it proves</th></tr></thead>
+        <tbody>
+          <tr><td><code>pnpm lint</code></td><td><span class="pill good">passed</span></td><td>Five workspace ESLint tasks and the repository format check succeed.</td></tr>
+          <tr><td><code>pnpm test</code></td><td><span class="pill good">188 passed</span></td><td>Game 108, web 48, content 28, protocol 4; server intentionally has no tests yet.</td></tr>
+          <tr><td><code>pnpm typecheck</code></td><td><span class="pill good">passed</span></td><td>All five workspaces satisfy strict TypeScript checks.</td></tr>
+          <tr><td><code>pnpm --filter @typefeud/content validate</code></td><td><span class="pill good">11 passed</span></td><td>Committed content pools satisfy schema and content rules.</td></tr>
+          <tr><td><code>pnpm build</code></td><td><span class="pill good">passed</span></td><td>The normal Next.js Turbopack production build completes.</td></tr>
+          <tr><td><code>pnpm peers check</code></td><td><span class="pill good">passed</span></td><td>The chosen dependency versions have no peer conflicts.</td></tr>
+          <tr><td><code>git diff --check</code></td><td><span class="pill good">passed</span></td><td>The working diff has no whitespace errors.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout tradeoff">
+        <strong>What local verification cannot prove:</strong> it cannot prove that GitHub can install and execute the
+        workflow from a fresh hosted runner. That is why the first pushed run remains the final acceptance check.
+      </div>
+    </section>
+
+    <section class="story-section" id="review">
+      <span class="section-tag">For the reviewer</span>
+      <h2>Reviewer's checklist</h2>
+      <ul class="compact">
+        <li>Confirm the workflow has read-only permissions and runs on both pushes and pull requests.</li>
+        <li>Confirm Node 22 and <code>pnpm@11.18.0</code> match the repository manifest.</li>
+        <li>Check that lockfile enforcement is active and the pnpm store—not <code>node_modules</code>—is cached.</li>
+        <li>Verify all five quality contracts appear as distinct GitHub Actions steps.</li>
+        <li>Confirm all five workspaces participate in Turbo linting and the web app retains its Next.js rules.</li>
+        <li>Spot-check the broad source diff to ensure it is formatting-only, especially the larger session and hook files.</li>
+        <li>After push, require the first <code>CI / verify</code> run to be green before closing Issue #1.</li>
+      </ul>
+      <div class="callout why">
+        <strong>Mental model for this review:</strong> this change does not alter TypeFeud's game rules. It turns the
+        repository's existing quality expectations into an automatic, reproducible gate and makes lint/format coverage
+        consistent across the monorepo.
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Sidebar active-section highlighting.
+  const links = document.querySelectorAll('nav.sidebar a');
+  const sections = Array.from(links).map(a => document.querySelector(a.getAttribute('href')));
+  const setActive = () => {
+    const y = window.scrollY + 120;
+    let idx = 0;
+    sections.forEach((s, i) => { if (s && s.offsetTop <= y) idx = i; });
+    links.forEach((a, i) => a.classList.toggle('active', i === idx));
+  };
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+</script>
+</body>
+</html>

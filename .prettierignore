@@ -1,0 +1,9 @@
+node_modules
+.next
+.turbo
+dist
+pnpm-lock.yaml
+docs/design
+docs/plan
+docs/review
+*.md

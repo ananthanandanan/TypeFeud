@@ -8,10 +8,18 @@ const line: Line = { id: "jab", text: "Alpha", tier: "jab", wordCount: 1 };
 const tuning = { ...DEFAULT_TUNING, speedMultMin: 1, speedMultMax: 1 };
 function initial(): DrivenRound {
   const player = (slot: 0 | 1): PlayerState => ({
-    slot, hp: 100, options: [line, line, line], progress: null,
-    momentum: 0, specialArmed: false, seenLineIds: [],
+    slot,
+    hp: 100,
+    options: [line, line, line],
+    progress: null,
+    momentum: 0,
+    specialArmed: false,
+    seenLineIds: [],
   });
-  return { round: { round: "debate", endsAt: 45000, status: "live", players: [player(0), player(1)] }, resolved: [false, false] };
+  return {
+    round: { round: "debate", endsAt: 45000, status: "live", players: [player(0), player(1)] },
+    resolved: [false, false],
+  };
 }
 function key(state: DrivenRound, key: string, at: number, slot: 0 | 1 = 0) {
   return driveRound(state, { type: "key", key, slot }, at, tuning);
@@ -62,8 +70,11 @@ describe("shared live/replay round driver", () => {
     state = key(state, "a", 500);
     expect(state.round.players[0].progress?.charIndex).toBe(4);
     expect(roundResult(state.round)?.winner).toBeNull();
-    for (const input of [{ type: "key", slot: 0, key: "a" }, { type: "special", slot: 0 },
-      { type: "deal", slot: 0, options: [line, line, line] }] satisfies RoundInput[]) {
+    for (const input of [
+      { type: "key", slot: 0, key: "a" },
+      { type: "special", slot: 0 },
+      { type: "deal", slot: 0, options: [line, line, line] },
+    ] satisfies RoundInput[]) {
       expect(driveRound(state, input, 600, tuning).round).toBe(state.round);
     }
   });
