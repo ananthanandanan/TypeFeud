@@ -1,24 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Start here
 
-Planning is finished. `SPEC.md` is approved, `TASKS.md` holds 14 tasks, and GitHub
-issues **#1–#14** exist mapping T-01…T-14 one-to-one. Do not run `/ank:spec` or
-`/ank:tasks` again — both are done. If asked what to build, the answer is code.
-
-**Read [`docs/handoff.md`](./docs/handoff.md) first.** It is the single source of
-where the project is, what to do next, and which past decisions still constrain the
-work. This file carries the standing rules; the handoff carries the position.
-
-The short version as of 2026-09-06: **Milestone 1 is done and Milestone 2 is half
-done.** #2, #3, #4 and #5 are merged (PRs #15–#18) and a full match now runs solo
-from arena reveal to results. **The next coding task is
-[#7 — the scripted ghost](https://github.com/ananthanandanan/TypeFeud/issues/7)**,
-which is what turns the flow into a contest, with
-**[#1 — CI](https://github.com/ananthanandanan/TypeFeud/issues/1)** small, unblocked
-and overdue.
+**Read [`docs/handoff.md`](./docs/handoff.md) first.** It says where the project is
+and what to build next; this file carries only the standing rules. Planning is
+finished: `SPEC.md` is approved and `TASKS.md` maps T-01…T-14 to GitHub issues
+#1–#14. Do not run `/ank:spec` or `/ank:tasks` again. If asked what to build, the
+answer is code.
 
 Issues are cut **vertically**: one issue = one PR = one demoable thing. Engine work
 and the UI that renders it ship together. Do not split a task into an engine PR and
@@ -26,82 +14,58 @@ a UI PR.
 
 ## Commands
 
+Node 22+, pnpm 11.18.0 (pinned in `package.json`). No Docker, no database, no
+external services.
+
 ```bash
 pnpm install
 pnpm dev          # turbo: web on :3000, ws server on :3001
+pnpm lint         # eslint in every workspace + prettier --check
+pnpm format       # prettier --write .
 pnpm test         # vitest across all packages
 pnpm typecheck    # tsc --noEmit across all packages
 pnpm build        # next build
-pnpm lint         # eslint (apps/web only — no lint config elsewhere)
 
-pnpm --filter @typefeud/game test
-pnpm --filter @typefeud/game test:watch
 pnpm --filter @typefeud/game test -- test/damage.test.ts -t "haymaker"   # single file / single test
+pnpm --filter @typefeud/game test:watch
 pnpm --filter @typefeud/content validate                                 # content pool gate
 ```
 
-Node 22+, pnpm 11+. No Docker, no database, no external services.
+CI (`.github/workflows/ci.yml`) runs lint, test, typecheck, validate, build in
+that order on every push and PR.
 
 ## Source of truth
 
-`SPEC.md` at repo root is the design and technical spec, and code comments cite
-its section numbers (`SPEC §2.5`). When a change contradicts the spec, the spec
-moves too — say so rather than silently diverging. `README.md` is the operator's
-manual; `docs/scaffold-handoff.md` records what the scaffold session decided and
-why.
+- `SPEC.md` is the design and technical spec; code comments cite its sections
+  (`SPEC §2.5`). When a change contradicts the spec, the spec moves too. Say so
+  rather than silently diverging.
+- `docs/handoff.md` is the one handoff. Rewrite it in place at the end of an
+  issue; never add a second dated handoff beside it. Per-issue detail lives in git
+  history and the approved plan under `docs/plan/`.
+- The visual system is settled on the design canvas at
+  <https://claude.ai/code/artifact/5c1997e1-3227-48cd-9f5b-643510e5db82> (source in
+  `docs/design/canvas/`). Read `docs/design/README.md` (palette, type ramp, the two
+  non-negotiable rules) before building any UI. Do not re-derive colours from a
+  mockup.
 
-**`docs/handoff.md` is the one handoff** — where the project is, what is next, and
-which past decisions still bind. Rewrite it in place at the end of an issue; do not
-add a second dated handoff beside it. Per-issue detail lives in git history and in
-the approved plan under `docs/plan/`.
+## Architecture rules
 
-## Design
-
-The visual system is settled and lives on a canvas at
-<https://claude.ai/code/artifact/5c1997e1-3227-48cd-9f5b-643510e5db82> — fight
-screen, results, typing surface, impact beat, physics, tokens, figure states, and
-match flow. Source is `docs/design/canvas/`; `docs/design/README.md` has the
-palette, type ramp, and the two non-negotiable rules. Read it before building any
-UI, and do not re-derive colours from a mockup.
-
-## Architecture
-
-Five workspaces, layered so client and server can never disagree:
-
-- `packages/game` — pure game logic (tuning constants, damage math, engine).
-  Imported by **both** `apps/web` and `apps/server`.
-- `packages/protocol` — zod schemas for every wire message + the `Transport`
-  interface. Both ends validate at the boundary, in both directions.
-- `packages/content` — line schema, mechanical validator, committed JSON pools.
-- `apps/web` — Next.js 16 App Router client.
-- `apps/server` — Node + `ws`, authoritative server (Milestone 3).
-
-Internal packages are consumed as **TypeScript source** (`"main": "./src/index.ts"`,
-all tsconfigs `noEmit`). There is no build step for them — do not add one; it
-exists to keep Milestone 1–3 iteration fast.
-
-`packages/game/src/engine.ts` exports `applyKeystroke`, `lockIn`, `dealOptions`,
-`resolveLine`, `triggerSpecial`, `tickRound`, `roundResult`, `startingHp` and
-`resolveMatch` — all implemented, no stubs left. The signatures were fixed before
-the bodies because both apps code against them.
-
-`resolveLine` is the exception that proves it. Its declared signature could not
-survive contact and is now
-`resolveLine(state, { now, slot? }, tuning?) => { state, outcome }` — it has to
-return new state, and WPM needs the completing keystroke's timestamp, which
-invariant 1 forbids the package from reading itself. It also leaves `progress`
-standing rather than clearing it, so the caller must resolve each completed line
-exactly once; resolving twice charges the damage twice. `dealOptions` is what
-clears it and puts the next three lines up.
-
-`applyKeystroke` delegates to `lockIn` when the player has no line locked in, so
-every key goes through one entry point (SPEC §2.3). Which three lines get dealt is
-`dealThree` in `packages/content` — game may not know the pool exists — and it
-takes its randomness as a parameter, ready for #6 to seed.
-
-`packages/game/src/progress.ts` is the read side of that state — `lineCharStates`,
-`displayLine`, `uncorrectedErrors`, `createLineProgress`. The typing surface renders
-from these rather than reaching into `LineProgress` itself.
+- `packages/game` (pure logic) is imported by **both** `apps/web` and
+  `apps/server`. `packages/protocol` holds zod schemas for every wire message; both
+  ends validate at the boundary, in both directions.
+- Internal packages are consumed as **TypeScript source** (`"main":
+  "./src/index.ts"`, all tsconfigs `noEmit`). Do not add a build step.
+- **Imports inside the internal packages carry no file extension.** Turbopack will
+  not resolve `./damage.js` to `damage.ts`, and the web build fails on the first
+  import of `@typefeud/game` if you add one.
+- Every key goes through `applyKeystroke`; it delegates to `lockIn` when no line is
+  locked in (SPEC §2.3).
+- `resolveLine` leaves `progress` standing. Resolve each completed line exactly
+  once; resolving twice charges the damage twice. `dealOptions` is what clears it.
+- Which three lines get dealt is `dealThree` in `packages/content`. `packages/game`
+  may not know the pool exists; randomness arrives as a parameter.
+- The typing surface renders from `packages/game/src/progress.ts` helpers, never by
+  reaching into `LineProgress` directly.
 
 ## Non-negotiable invariants
 
@@ -126,39 +90,61 @@ Breaking one of these is a design change, not a refactor. From SPEC §11:
    tick loop and there must never be one.
 9. **Room logic sits behind `Transport`** so `NodeWsTransport` and a future
    `DurableObjectTransport` stay interchangeable.
+10. **Round-3 sabotage and screen shake never obscure the player's own text.**
+    Effects render behind the typing surface or outside its bounding box.
 
 ## Conventions
 
-- Every tunable number lives in `packages/game/src/tuning.ts` — no magic numbers
-  in resolution code, so the dev tuning panel can drive them. Functions that read a
-  tunable take a `Tuning` argument defaulting to `DEFAULT_TUNING`; they never reach
-  for the module constants directly, which is what lets the panel drive the live
-  math without making the package mutable.
-- **Imports inside the internal packages carry no file extension.** Turbopack will
-  not resolve `./damage.js` to `damage.ts` in a transpiled source package, and the
-  web build fails on the first import of `@typefeud/game` if you add one. tsc,
-  vitest and tsx all resolve extensionless.
-- Dev shortcuts (SPEC §7.2) live in `apps/web/src/dev/flags.ts`: `?bot=1`,
-  `?round=0..3`, `?tier=jab|combo|haymaker` (deals all three options from one tier,
-  for testing it in isolation — unset in normal play), `?tuning=1`. Backtick toggles
-  the tuning panel and tab arms the Special when the meter is full. `?round=` now
-  seeds where the match *opens* rather than pinning it — `?round=2` still ends at
-  the fight. Enter and esc no longer deal: #5 gave that to the round clock, and the
-  next three arrive `impactBeatMs` after the line lands.
+- Every tunable number lives in `packages/game/src/tuning.ts`, never as a magic
+  number in resolution code. Functions that read a tunable take a `Tuning` argument
+  defaulting to `DEFAULT_TUNING` and never read the module constants directly.
+- Dev shortcuts (SPEC §7.2) live in `apps/web/src/dev/flags.ts` and its header
+  comment lists them. Add new ones there.
 - Content line ids are `<arena-without-underscores>-<round>-<tier>-<nnn>`, e.g.
-  `groupchat-debate-haymaker-001`. SPEC §3.3 sketches an abbreviated form; the
-  validator standardises on the unabbreviated one.
-- Tests live in `test/*.test.ts` per package (vitest `include` is scoped to that).
-  Test weight belongs in `packages/game`; SPEC §7.3 orders the priorities and
-  rules out E2E browser tests for v1.
-- SPEC §2.5's worked examples are encoded as tests in
-  `packages/game/test/damage.test.ts`. If those numbers move, the spec moves too.
-- Build order is by milestone (SPEC §8) — do not build the single-player game and
+  `groupchat-debate-haymaker-001`. The validator uses this unabbreviated form, not
+  SPEC §3.3's sketch.
+- Tests live in `test/*.test.ts` per package. Test weight belongs in
+  `packages/game`; SPEC §7.3 orders the priorities and rules out E2E browser tests
+  for v1, so verify UI changes by running the app.
+- SPEC §2.5's worked examples are encoded in `packages/game/test/damage.test.ts`.
+  If those numbers move, the spec moves too.
+- Build order is by milestone (SPEC §8). Do not build the single-player game and
   then bolt on multiplayer.
+- Commits use history's prefixes (`feat:`, `chore:`, `docs:`) and carry no
+  tooling metadata, session trailers, or co-author/generated-by lines. PRs link
+  the issue, describe behaviour and validation, and include screenshots for visual
+  changes.
+- Before Milestone 4, verify `@opennextjs/cloudflare` supports the Next.js version
+  in use and pin both.
 
-## Known risks
+## Working rules
 
-- Next.js 16.3 vs `@opennextjs/cloudflare`: the community adapter can lag Next
-  majors. Verify before Milestone 4 and pin versions.
-- Round-3 sabotage and screen shake must never obscure the player's own text —
-  effects render behind the typing surface or outside its bounding box.
+- Before saying a task is done, run `pnpm lint`, `pnpm test`, `pnpm typecheck`,
+  `pnpm --filter @typefeud/content validate` and `pnpm build` (CI's gate) and
+  report what ran and what passed. If you could not run a check, say so plainly.
+  Never write "should work" in place of a result.
+- Change only what the task needs. No drive-by refactors, renames, reformatting, or
+  dependency bumps. If you spot an unrelated problem, mention it at the end of your
+  reply instead of fixing it.
+- Write the simplest code that solves the task. No abstractions, config options, or
+  fallback paths for cases the task doesn't have. Three similar lines are better
+  than a premature helper.
+- If a requirement can be read two ways and the readings lead to different code,
+  ask one question before building. If the choice is low-stakes or easy to reverse,
+  pick the conventional option and say which one you picked.
+- When two approaches are both correct, choose the one that is better for the
+  player, then for the developer who maintains it, then for the next agent that
+  reads it. If those pull in different directions, name the trade-off in your
+  reply. "Don't break anything" means existing tests pass and the engine exports,
+  wire schemas, dev flags, and localStorage data stay compatible unless the task
+  says otherwise.
+- For a feature you haven't built before, search GitHub and npm for existing
+  implementations first. Compare two or three approaches in a short note, then
+  build. Prefer a maintained library over hand-rolled code unless the dependency
+  cost is higher than the code.
+- Cut taglines, helper text, and secondary labels. If a screen needs them to make
+  sense, fix the layout instead. Every visible string must be the label, the data,
+  or the error.
+- Never edit this file to make it match what you just did. If a rule here is wrong
+  or blocks the task, stop and propose the change to the user.
+
